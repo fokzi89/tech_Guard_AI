@@ -59,5 +59,29 @@ export async function updateSession(request: NextRequest) {
     // If this is not done, you may be causing the browser and server to go out
     // of sync and terminate the user's session prematurely.
 
+    // Add security headers
+    supabaseResponse.headers.set('X-DNS-Prefetch-Control', 'on')
+    supabaseResponse.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+    supabaseResponse.headers.set('X-Frame-Options', 'SAMEORIGIN')
+    supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
+    supabaseResponse.headers.set('X-XSS-Protection', '1; mode=block')
+    supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    supabaseResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+
+    // Content Security Policy
+    const cspHeader = `
+      default-src 'self';
+      script-src 'self' 'unsafe-eval' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' blob: data: https:;
+      font-src 'self' data:;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co;
+      frame-ancestors 'self';
+      base-uri 'self';
+      form-action 'self';
+    `.replace(/\s{2,}/g, ' ').trim()
+
+    supabaseResponse.headers.set('Content-Security-Policy', cspHeader)
+
     return supabaseResponse
 }

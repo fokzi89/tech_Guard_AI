@@ -29,17 +29,17 @@ Next.js 14 App Router structure:
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Initialize Next.js 14 project with TypeScript and App Router
-- [ ] T002 [P] Install core dependencies (Supabase client, Vercel AI SDK, Zod, Tailwind CSS)
-- [ ] T003 [P] Configure TypeScript strict mode in tsconfig.json
-- [ ] T004 [P] Configure ESLint and Prettier per constitution
-- [ ] T005 [P] Setup Tailwind CSS 4 configuration in tailwind.config.ts
-- [ ] T006 [P] Initialize Shadcn/UI and install base components (button, input, card, dialog)
-- [ ] T007 [P] Create project directory structure per plan.md (app/, lib/, types/, tests/, supabase/)
-- [ ] T008 [P] Setup environment variables template in .env.example
-- [ ] T009 [P] Create .gitignore for Next.js project
-- [ ] T010 [P] Setup Vitest configuration for unit testing in vitest.config.ts
-- [ ] T011 [P] Setup Playwright configuration for E2E testing in playwright.config.ts
+- [x] T001 Initialize Next.js 14 project with TypeScript and App Router
+- [x] T002 [P] Install core dependencies (Supabase client, Vercel AI SDK, Zod, Tailwind CSS)
+- [x] T003 [P] Configure TypeScript strict mode in tsconfig.json
+- [x] T004 [P] Configure ESLint and Prettier per constitution
+- [x] T005 [P] Setup Tailwind CSS 4 configuration in tailwind.config.ts
+- [x] T006 [P] Initialize Shadcn/UI and install base components (button, input, card, dialog)
+- [x] T007 [P] Create project directory structure per plan.md (app/, lib/, types/, tests/, supabase/)
+- [x] T008 [P] Setup environment variables template in .env.example
+- [x] T009 [P] Create .gitignore for Next.js project
+- [x] T010 [P] Setup Vitest configuration for unit testing in vitest.config.ts
+- [x] T011 [P] Setup Playwright configuration for E2E testing in playwright.config.ts
 
 ---
 
@@ -51,47 +51,47 @@ Next.js 14 App Router structure:
 
 ### Database & Authentication
 
-- [ ] T012 Initialize Supabase project locally with supabase init
-- [ ] T013 Create initial database migration in supabase/migrations/00001_initial_schema.sql with all 7 tables (organizations, profiles, manuals, safety_blacklist, incidents, conversation_messages, service_reports)
-- [ ] T014 [P] Enable pgvector extension in migration file
-- [ ] T015 [P] Create vector indexes for embeddings columns (manuals, safety_blacklist)
-- [ ] T016 Create RLS policies for organizations table in migration file
-- [ ] T017 Create RLS policies for profiles table in migration file
-- [ ] T018 Create RLS policies for manuals table in migration file
-- [ ] T019 Create RLS policies for safety_blacklist table in migration file
-- [ ] T020 Create RLS policies for incidents table in migration file
-- [ ] T021 Create RLS policies for conversation_messages table in migration file
-- [ ] T022 Create RLS policies for service_reports table in migration file
-- [ ] T023 Create database functions (check_safety_blacklist, search_manuals) in migration file
-- [ ] T024 Apply migration with supabase db reset
-- [ ] T025 Generate TypeScript types from Supabase schema in types/database.ts
+- [x] T012 Initialize Supabase project locally with supabase init
+- [x] T013 Create initial database migration in supabase/migrations/00001_initial_schema.sql with all 7 tables (organizations, profiles, manuals, safety_blacklist, incidents, conversation_messages, service_reports)
+- [x] T014 [P] Enable pgvector extension in migration file
+- [x] T015 [P] Create vector indexes for embeddings columns (manuals, safety_blacklist)
+- [x] T016 Create RLS policies for organizations table in migration file
+- [x] T017 Create RLS policies for profiles table in migration file
+- [x] T018 Create RLS policies for manuals table in migration file
+- [x] T019 Create RLS policies for safety_blacklist table in migration file
+- [x] T020 Create RLS policies for incidents table in migration file
+- [x] T021 Create RLS policies for conversation_messages table in migration file
+- [x] T022 Create RLS policies for service_reports table in migration file
+- [x] T023 Create database functions (check_safety_blacklist, search_manuals) in migration file
+- [x] T024 Apply migration with supabase db reset
+- [x] T025 Generate TypeScript types from Supabase schema in types/database.ts
 
 ### API Infrastructure
 
-- [ ] T026 Create Supabase client factory for browser in lib/supabase/client.ts
-- [ ] T027 Create Supabase client factory for server components in lib/supabase/server.ts
-- [ ] T028 Create Supabase admin client (service role) in lib/supabase/admin.ts
-- [ ] T029 [P] Create authentication middleware in app/middleware.ts
-- [ ] T030 [P] Configure security headers (CSP, HSTS, X-Frame-Options) in middleware
-- [ ] T031 [P] Create API error handling utilities in lib/utils/errors.ts
-- [ ] T032 [P] Create Zod validation schemas for API requests in lib/utils/validation.ts
-- [ ] T033 [P] Create rate limiting middleware in lib/utils/rate-limit.ts
+- [x] T026 Create Supabase client factory for browser in lib/supabase/client.ts
+- [x] T027 Create Supabase client factory for server components in lib/supabase/server.ts
+- [x] T028 Create Supabase admin client (service role) in lib/supabase/admin.ts
+- [x] T029 [P] Create authentication middleware in app/middleware.ts
+- [x] T030 [P] Configure security headers (CSP, HSTS, X-Frame-Options) in middleware
+- [x] T031 [P] Create API error handling utilities in lib/utils/errors.ts
+- [x] T032 [P] Create Zod validation schemas for API requests in lib/utils/validation.ts
+- [x] T033 [P] Create rate limiting middleware in lib/utils/rate-limit.ts
 
 ### RAG Engine Infrastructure
 
-- [ ] T034 Setup embedding generation using OpenAI text-embedding-3-small in lib/rag/embeddings.ts
-- [ ] T035 [P] Implement vector similarity search function in lib/rag/search.ts
-- [ ] T036 [P] Create PDF text extraction utility in lib/rag/manual-processor.ts
-- [ ] T037 [P] Create safety warning extraction logic in lib/rag/manual-processor.ts
+- [x] T034 Setup embedding generation using OpenAI text-embedding-3-small in lib/rag/embeddings.ts
+- [x] T035 [P] Implement vector similarity search function in lib/rag/search.ts
+- [x] T036 [P] Create PDF text extraction utility in lib/rag/manual-processor.ts
+- [x] T037 [P] Create safety warning extraction logic in lib/rag/manual-processor.ts
 
 ### Shared Types & Components
 
-- [ ] T038 [P] Create shared API types in types/api.ts (request/response interfaces)
-- [ ] T039 [P] Create agent message types in types/agents.ts
-- [ ] T040 [P] Create shared UI components: Button, Input, Modal, FileUpload in app/components/shared/
-- [ ] T041 [P] Create root layout with providers in app/layout.tsx
-- [ ] T042 [P] Create landing page placeholder in app/page.tsx
-- [ ] T043 [P] Setup global styles in app/globals.css
+- [x] T038 [P] Create shared API types in types/api.ts (request/response interfaces)
+- [x] T039 [P] Create agent message types in types/agents.ts
+- [x] T040 [P] Create shared UI components: Button, Input, Modal, FileUpload in app/components/shared/
+- [x] T041 [P] Create root layout with providers in app/layout.tsx
+- [x] T042 [P] Create landing page placeholder in app/page.tsx
+- [x] T043 [P] Setup global styles in app/globals.css
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -157,9 +157,9 @@ Next.js 14 App Router structure:
 
 ### Authentication Pages
 
-- [ ] T076 [P] [US1] Create login page in app/(auth)/login/page.tsx
-- [ ] T077 [P] [US1] Create signup page in app/(auth)/signup/page.tsx
-- [ ] T078 [US1] Integrate Supabase Auth with login/signup forms
+- [x] T076 [P] [US1] Create login page in app/(auth)/login/page.tsx
+- [x] T077 [P] [US1] Create signup page in app/(auth)/signup/page.tsx (super admin registration)
+- [x] T078 [US1] Integrate Supabase Auth with login/signup forms
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Technicians can log in, start troubleshooting sessions, ask questions, and the Guardian Agent will block dangerous requests with the Isolation Protocol.
 
