@@ -149,6 +149,10 @@ html {
   background: rgba(15, 23, 42, 0.5);
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
 ::-webkit-scrollbar-thumb {
   background: rgba(59, 130, 246, 0.5);
   border-radius: 5px;
@@ -156,4 +160,31 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(59, 130, 246, 0.7);
+}
+
+/* Theme-aware gradient backgrounds */
+.gradient-blue-bg {
+  @apply bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900;
+}
+
+/* Theme-aware text colors for gradient backgrounds */
+.gradient-text {
+  @apply text-gray-900 dark:text-white;
+}
+
+.gradient-text-muted {
+  @apply text-gray-700 dark:text-blue-200;
+}
+
+.gradient-text-primary {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Theme-aware card styles for gradient backgrounds */
+.gradient-card {
+  @apply bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-gray-200 dark:border-white/20;
+}
+
+.gradient-card-hover {
+  @apply hover:border-blue-400 dark:hover:border-blue-500/50;
 }

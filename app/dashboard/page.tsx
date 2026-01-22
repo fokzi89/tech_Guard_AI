@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { authService } from '@/lib/services/auth.service'
 import { useRouter } from 'next/navigation'
 import type { AuthUser, Organization } from '@/types/auth'
+import { DashboardSkeleton } from '@/app/components/ui/dashboard-skeleton'
 
 export default function DashboardPage() {
     const router = useRouter()
@@ -43,15 +44,18 @@ export default function DashboardPage() {
         router.push('/auth/login')
     }
 
+    // Memoize statistics calculations for better performance
+    const stats = useMemo(() => {
+        if (!organizations || organizations.length === 0) return null
+
+        return {
+            total: organizations.length,
+            active: organizations.filter(org => org.status === 'active').length
+        }
+    }, [organizations])
+
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-                <div className="flex flex-col items-center space-y-4">
-                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-white text-xl">Loading dashboard...</p>
-                </div>
-            </div>
-        )
+        return <DashboardSkeleton />
     }
 
     return (
@@ -128,7 +132,7 @@ export default function DashboardPage() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-blue-200 text-sm font-medium">Total Organizations</p>
-                                        <p className="text-4xl font-bold text-white mt-2">{organizations.length}</p>
+                                        <p className="text-4xl font-bold text-white mt-2">{stats?.total || 0}</p>
                                     </div>
                                     <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                                         <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +147,7 @@ export default function DashboardPage() {
                                     <div>
                                         <p className="text-green-200 text-sm font-medium">Active Organizations</p>
                                         <p className="text-4xl font-bold text-white mt-2">
-                                            {organizations.filter(org => org.status === 'active').length}
+                                            {stats?.active || 0}
                                         </p>
                                     </div>
                                     <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -658,8 +662,8 @@ export default function DashboardPage() {
     )
 }
 
-// Create Organization Modal Component
-function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+// Create Organization Modal Component (Memoized for performance)
+const CreateOrganizationModal = memo(function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
     const [formData, setFormData] = useState({
         name: '',
         subscriptionTier: 'basic' as 'basic' | 'professional' | 'enterprise',
@@ -769,10 +773,10 @@ function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; 
             </div>
         </div>
     )
-}
+})
 
-// Invite User Modal Component
-function InviteUserModal({
+// Invite User Modal Component (Memoized for performance)
+const InviteUserModal = memo(function InviteUserModal({
     organizations,
     selectedOrg,
     onClose
@@ -970,10 +974,10 @@ function InviteUserModal({
             </div>
         </div>
     )
-}
+})
 
-// Organization Details Modal
-function OrganizationDetailsModal({
+// Organization Details Modal (Memoized for performance)
+const OrganizationDetailsModal = memo(function OrganizationDetailsModal({
     organization,
     onClose,
     onInvite,
@@ -1041,4 +1045,4 @@ function OrganizationDetailsModal({
             </div>
         </div>
     )
-}
+})
