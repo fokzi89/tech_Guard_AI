@@ -115,7 +115,7 @@ export async function validateRequest<T>(
         return schema.parse(body)
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`)
+            throw new Error(`Validation failed: ${error.issues.map(e => e.message).join(', ')}`)
         }
         throw error
     }

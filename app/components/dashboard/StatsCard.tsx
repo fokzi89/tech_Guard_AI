@@ -27,39 +27,39 @@ export function StatsCard({
     return (
         <div
             className={cn(
-                'bg-white rounded-lg shadow p-6 transition-all',
+                'glass-panel rounded-lg shadow p-6 transition-all',
                 onClick && 'cursor-pointer hover:shadow-lg hover:scale-105'
             )}
             onClick={onClick}
         >
             <div className="flex items-center justify-between">
                 <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600">{title}</p>
+                    <p className="text-sm font-medium gradient-text-muted">{title}</p>
                     {isLoading ? (
-                        <div className="mt-2 h-8 w-24 bg-gray-200 animate-pulse rounded" />
+                        <div className="mt-2 h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                     ) : (
-                        <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
+                        <p className="mt-2 text-3xl font-bold gradient-text">{value}</p>
                     )}
                     {description && (
-                        <p className="mt-1 text-sm text-gray-500">{description}</p>
+                        <p className="mt-1 text-sm gradient-text-muted">{description}</p>
                     )}
                     {trend && (
                         <div className="mt-2 flex items-center">
                             <span
                                 className={cn(
                                     'text-sm font-medium',
-                                    trend.isPositive ? 'text-green-600' : 'text-red-600'
+                                    trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                                 )}
                             >
                                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
                             </span>
-                            <span className="ml-2 text-sm text-gray-500">vs last month</span>
+                            <span className="ml-2 text-sm gradient-text-muted">vs last month</span>
                         </div>
                     )}
                 </div>
                 {icon && (
                     <div className="ml-4 flex-shrink-0">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400">
                             {icon}
                         </div>
                     </div>

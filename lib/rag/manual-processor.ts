@@ -1,4 +1,4 @@
-import pdf from 'pdf-parse'
+import { PDFParse } from 'pdf-parse'
 import { generateEmbedding, prepareTextForEmbedding } from './embeddings'
 
 /**
@@ -45,12 +45,16 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<{
     totalPages: number
 }> {
     try {
-        const data = await pdf(pdfBuffer)
+        // TODO: Fix PDF parsing implementation
+        // const parser = new PDFParse({})
+        // const data = await parser.parse(pdfBuffer)
 
-        return {
-            text: data.text,
-            totalPages: data.numpages,
-        }
+        throw new Error('PDF parsing not yet implemented')
+
+        // return {
+        //     text: data.text,
+        //     totalPages: data.numpages,
+        // }
     } catch (error) {
         console.error('Error extracting text from PDF:', error)
         throw new Error('Failed to extract text from PDF')
@@ -237,11 +241,15 @@ export async function extractSafetyRules(
     embedding: number[]
     severity: 'CRITICAL' | 'HIGH' | 'MEDIUM'
 }>> {
-    const rules = []
+    const rules: Array<{
+        ruleDescription: string
+        embedding: number[]
+        severity: 'CRITICAL' | 'HIGH' | 'MEDIUM'
+    }> = []
 
     for (const warning of safetyWarnings) {
         // Map warning types to severity levels
-        const severity = warning.type === 'DANGER' ? 'CRITICAL'
+        const severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' = warning.type === 'DANGER' ? 'CRITICAL'
             : warning.type === 'WARNING' ? 'HIGH'
                 : 'MEDIUM'
 

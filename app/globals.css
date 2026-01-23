@@ -2,50 +2,74 @@
 
 @layer base {
   :root {
-    /* Light mode colors */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 217 91% 60%;
+    /* Light mode colors - #F0FFFF background with #03002e text/buttons */
+    --background: 180 100% 97%; /* #F0FFFF - cyan/light blue */
+    --foreground: 244 100% 9%; /* #03002e - very dark blue */
+    --card: 180 100% 95%; /* Slightly darker cyan for cards */
+    --card-foreground: 244 100% 9%;
+    --popover: 180 100% 97%;
+    --popover-foreground: 244 100% 9%;
+    --primary: 244 100% 9%; /* #03002e - dark blue buttons */
+    --primary-foreground: 180 100% 97%; /* #F0FFFF - light text on dark buttons */
+    --secondary: 180 50% 90%; /* Muted cyan for secondary elements */
+    --secondary-foreground: 244 100% 9%;
+    --muted: 180 30% 92%;
+    --muted-foreground: 244 50% 30%; /* Lighter dark blue for muted text */
+    --accent: 244 100% 15%; /* Slightly lighter than primary for accents */
+    --accent-foreground: 180 100% 97%;
+    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
+    --destructive-foreground: 180 100% 97%;
+    --border: 244 30% 85%; /* Light blue-gray borders */
+    --input: 180 50% 93%; /* Light cyan input backgrounds */
+    --ring: 244 100% 9%; /* Focus ring matches primary */
     --radius: 0.5rem;
+
+    /* Gradient Colors - Light mode subtle gradient */
+    --gradient-from: 180 100% 97%; /* #F0FFFF */
+    --gradient-via: 180 100% 95%; /* Slightly darker cyan */
+    --gradient-to: 180 80% 92%; /* Even more subtle cyan */
+
+    /* Component-specific colors for prominence */
+    --nav-bg: 244 100% 12%; /* Dark blue nav in light mode */
+    --nav-foreground: 180 100% 97%;
+    --nav-hover: 244 100% 18%;
+    --sidebar-bg: 244 100% 9%;
+    --sidebar-foreground: 180 100% 97%;
   }
 
   .dark {
-    /* Dark mode colors */
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 217 91% 60%;
+    /* Dark mode colors - #03002e background gradient with #F0FFFF text/buttons */
+    --background: 244 100% 9%; /* #03002e - very dark blue */
+    --foreground: 180 100% 97%; /* #F0FFFF - cyan/light text */
+    --card: 244 90% 12%; /* Slightly lighter dark blue for cards */
+    --card-foreground: 180 100% 97%;
+    --popover: 244 95% 11%;
+    --popover-foreground: 180 100% 97%;
+    --primary: 180 100% 97%; /* #F0FFFF - light cyan buttons */
+    --primary-foreground: 244 100% 9%; /* #03002e - dark text on light buttons */
+    --secondary: 244 80% 15%; /* Lighter dark blue for secondary elements */
+    --secondary-foreground: 180 100% 97%;
+    --muted: 244 60% 18%;
+    --muted-foreground: 180 50% 75%; /* Muted cyan for less important text */
+    --accent: 180 100% 90%; /* Bright cyan for accents */
+    --accent-foreground: 244 100% 9%;
+    --destructive: 0 62.8% 50%; /* Red for destructive actions */
+    --destructive-foreground: 180 100% 97%;
+    --border: 244 50% 25%; /* Blue-tinted borders */
+    --input: 244 80% 15%; /* Dark blue input backgrounds */
+    --ring: 180 100% 97%; /* Focus ring matches primary */
+
+    /* Gradient Colors - Dark mode blue gradient */
+    --gradient-from: 244 100% 9%; /* #03002e */
+    --gradient-via: 244 90% 12%; /* Slightly lighter blue */
+    --gradient-to: 240 80% 15%; /* More blue-tinted gradient end */
+
+    /* Component-specific colors for prominence */
+    --nav-bg: 180 100% 92%; /* Light cyan nav in dark mode */
+    --nav-foreground: 244 100% 9%;
+    --nav-hover: 180 100% 85%;
+    --sidebar-bg: 180 100% 95%;
+    --sidebar-foreground: 244 100% 9%;
   }
 
   * {
@@ -84,6 +108,13 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   --default-border-radius: var(--radius);
+
+  /* Component-specific utilities */
+  --color-nav-bg: hsl(var(--nav-bg));
+  --color-nav-foreground: hsl(var(--nav-foreground));
+  --color-nav-hover: hsl(var(--nav-hover));
+  --color-sidebar-bg: hsl(var(--sidebar-bg));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
 }
 
 /* Custom animations */
@@ -91,6 +122,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -101,6 +133,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -111,6 +144,7 @@
   0% {
     background-position: -1000px 0;
   }
+
   100% {
     background-position: 1000px 0;
   }
@@ -126,12 +160,10 @@
 
 .animate-shimmer {
   animation: shimmer 2s infinite linear;
-  background: linear-gradient(
-    to right,
-    hsl(var(--muted)) 0%,
-    hsl(var(--muted-foreground) / 0.1) 50%,
-    hsl(var(--muted)) 100%
-  );
+  background: linear-gradient(to right,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%);
   background-size: 1000px 100%;
 }
 
@@ -146,45 +178,98 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: hsl(var(--muted) / 0.3);
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: hsl(var(--muted) / 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.5);
+  background: hsl(var(--primary) / 0.5);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.7);
+  background: hsl(var(--primary) / 0.7);
 }
 
 /* Theme-aware gradient backgrounds */
 .gradient-blue-bg {
-  @apply bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900;
+  background-image: linear-gradient(to bottom right, hsl(var(--gradient-from)), hsl(var(--gradient-via)), hsl(var(--gradient-to)));
 }
 
 /* Theme-aware text colors for gradient backgrounds */
 .gradient-text {
-  @apply text-gray-900 dark:text-white;
+  color: hsl(var(--foreground));
 }
 
 .gradient-text-muted {
-  @apply text-gray-700 dark:text-blue-200;
+  color: hsl(var(--muted-foreground));
 }
 
 .gradient-text-primary {
-  @apply text-blue-600 dark:text-blue-400;
+  color: hsl(var(--primary));
 }
 
 /* Theme-aware card styles for gradient backgrounds */
 .gradient-card {
-  @apply bg-white/80 dark:bg-white/10 backdrop-blur-lg border border-gray-200 dark:border-white/20;
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
 }
 
 .gradient-card-hover {
-  @apply hover:border-blue-400 dark:hover:border-blue-500/50;
+  &:hover {
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.15);
+  }
+}
+
+/* Glass panel utility */
+.glass-panel {
+  background-color: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border));
+  transition: all 0.2s ease;
+}
+
+.glass-panel-hover {
+  &:hover {
+    background-color: hsl(var(--card) / 0.95);
+    border-color: hsl(var(--border));
+  }
+}
+
+/* Navigation and Sidebar utilities */
+.nav-bar {
+  background-color: hsl(var(--nav-bg));
+  color: hsl(var(--nav-foreground));
+  border-color: hsl(var(--border));
+}
+
+.nav-item {
+  color: hsl(var(--nav-foreground));
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: hsl(var(--nav-hover));
+}
+
+.sidebar {
+  background-color: hsl(var(--sidebar-bg));
+  color: hsl(var(--sidebar-foreground));
+  border-color: hsl(var(--border));
+}
+
+.sidebar-item {
+  color: hsl(var(--sidebar-foreground));
+  transition: all 0.2s ease;
+}
+
+.sidebar-item:hover {
+  background-color: hsl(var(--primary) / 0.1);
 }

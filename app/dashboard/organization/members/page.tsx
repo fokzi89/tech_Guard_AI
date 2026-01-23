@@ -69,11 +69,11 @@ export default function OrganizationMembersPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-8">
+            <div className="p-8">
                 <div className="max-w-6xl mx-auto">
                     <div className="animate-pulse space-y-4">
-                        <div className="h-8 bg-white/20 rounded w-1/4"></div>
-                        <div className="h-64 bg-white/10 rounded"></div>
+                        <div className="h-8 bg-muted rounded w-1/4"></div>
+                        <div className="h-64 bg-muted rounded"></div>
                     </div>
                 </div>
             </div>
@@ -81,13 +81,13 @@ export default function OrganizationMembersPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-8">
+        <div className="p-8 gradient-blue-bg min-h-screen">
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-white">Team Members</h1>
-                        <p className="text-blue-200 mt-1">{orgName}</p>
+                        <h1 className="text-3xl font-bold gradient-text">Team Members</h1>
+                        <p className="gradient-text-muted mt-1">{orgName}</p>
                     </div>
                     <Link href="/dashboard/organization">
                         <Button variant="outline">Back to Organization</Button>
@@ -127,50 +127,50 @@ export default function OrganizationMembersPage() {
                 </div>
 
                 {/* Members Table */}
-                <div className="bg-white/10 backdrop-blur-lg rounded-lg border border-white/20 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-white/20">
-                        <h2 className="text-lg font-semibold text-white">All Members</h2>
+                <div className="glass-panel rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 dark:border-white/20">
+                        <h2 className="text-lg font-semibold gradient-text">All Members</h2>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-white/10">
-                            <thead className="bg-white/5">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
+                            <thead className="bg-gray-50 dark:bg-white/5">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left text-xs font-medium gradient-text-muted uppercase tracking-wider">
                                         Name
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left text-xs font-medium gradient-text-muted uppercase tracking-wider">
                                         Email
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left text-xs font-medium gradient-text-muted uppercase tracking-wider">
                                         Role
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left text-xs font-medium gradient-text-muted uppercase tracking-wider">
                                         Joined
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/10">
                                 {members.map((member) => (
-                                    <tr key={member.id} className="hover:bg-white/5 transition-colors">
+                                    <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0 h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
                                                     {member.full_name?.charAt(0) || 'U'}
                                                 </div>
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-white">{member.full_name}</div>
+                                                    <div className="text-sm font-medium gradient-text">{member.full_name}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-blue-100">{member.email}</div>
+                                            <div className="text-sm gradient-text-muted">{member.email}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getRoleBadgeColor(member.role)}`}>
                                                 {member.role.replace('_', ' ').toUpperCase()}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-200">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm gradient-text-muted">
                                             {new Date(member.created_at).toLocaleDateString()}
                                         </td>
                                     </tr>

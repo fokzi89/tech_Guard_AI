@@ -256,7 +256,7 @@ All API routes follow this structure:
 ```typescript
 // app/api/example/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 // Define request schema
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
     const validated = requestSchema.parse(body);
 
     // Get authenticated Supabase client (RLS applies)
-    const supabase = createServerClient();
+    const supabase = await createClient();
 
     // Query database (RLS enforced automatically)
     const { data, error } = await supabase
