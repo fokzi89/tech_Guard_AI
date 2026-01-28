@@ -1,257 +1,147 @@
-/**
- * Chat API Route - Main Troubleshooting Endpoint
- *
- * This is the PRIMARY endpoint for the troubleshooting chat interface.
- * It integrates Guardian Agent (safety) and Diagnostician Agent (troubleshooting).
- *
- * Flow:
- * 1. User sends message
- * 2. Guardian Agent analyzes for safety (MUST run first)
- * 3. If Guardian blocks → return safety warning and trigger lockout
- * 4. If Guardian allows → Diagnostician Agent provides troubleshooting
- * 5. Stream response back to user
- *
- * Security:
- * - Requires authentication
- * - Validates all inputs with Zod
- * - Enforces RLS through Supabase client
- * - Logs all safety decisions for audit trail
- */
-
-import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { guardianAgent } from '@/lib/agents/guardian';
+import { diagnosticianAgent } from '@/lib/agents/diagnostician';
+import { searchManuals } from '@/lib/rag/search';
+import { generateEmbedding } from '@/lib/rag/embeddings';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { runGuardianAgent } from '@/lib/agents/guardian';
-import { streamDiagnosticianAgent } from '@/lib/agents/diagnostician';
+// Removed CoreMessage import due to type issues
+// If error persists, remove it.
+// The previous error was "Module 'ai' has no exported member 'CoreMessage'".
+// So I should remove it.
 
-/**
- * Request schema validation
- */
+// Schema for the chat request
 const chatRequestSchema = z.object({
-  message: z.string().min(1, 'Message cannot be empty').max(5000),
-  incidentId: z.string().uuid('Invalid incident ID'),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string()
+  })),
+  sessionId: z.string().uuid(),
   machineModel: z.string().min(1),
-  conversationHistory: z
-    .array(
-      z.object({
-        role: z.enum(['user', 'assistant']),
-        content: z.string(),
-      })
-    )
-    .optional()
-    .default([]),
-  photoUrl: z.string().url().optional(),
+  photoUrl: z.string().url().optional()
 });
 
-/**
- * POST /api/chat
- *
- * Main chat endpoint with Guardian + Diagnostician integration
- */
-export async function POST(request: NextRequest) {
-  const startTime = Date.now();
+export const maxDuration = 30;
 
+export async function POST(req: Request) {
   try {
-    // Step 1: Parse and validate request
-    const body = await request.json();
-    const validated = chatRequestSchema.parse(body);
-
-    // Step 2: Get authenticated user
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Step 3: Get user's profile and org_id
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('org_id, role')
-      .eq('id', user.id)
-      .single();
+    const json = await req.json();
+    const { messages, sessionId, machineModel } = chatRequestSchema.parse(json);
 
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      );
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== 'user') {
+      return NextResponse.json({ error: 'Last message must be from user' }, { status: 400 });
     }
 
-    // Step 4: Verify incident belongs to user's organization (RLS check)
-    const { data: incident, error: incidentError } = await supabase
-      .from('incidents')
-      .select('id, machine_model, status')
-      .eq('id', validated.incidentId)
-      .single();
-
-    if (incidentError || !incident) {
-      return NextResponse.json(
-        { error: 'Incident not found or access denied' },
-        { status: 404 }
-      );
+    const orgId = (user.user_metadata?.org_id as string) ?? null; // Assuming org_id is in metadata
+    // Fallback: Fetch profile to get org_id if not in metadata
+    let activeOrgId = orgId;
+    if (!activeOrgId) {
+      const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+      if (profile) activeOrgId = (profile as any).org_id;
     }
 
-    // Step 5: Run Guardian Agent FIRST (safety check)
-    console.log('[Guardian] Analyzing message for safety...');
-    const guardianResult = await runGuardianAgent({
-      userMessage: validated.message,
-      machineModel: validated.machineModel,
-      conversationHistory: validated.conversationHistory,
-      orgId: profile.org_id,
-    });
-
-    console.log('[Guardian] Decision:', guardianResult.decision, {
-      confidence: guardianResult.confidence,
-      processingTime: guardianResult.processingTimeMs,
-    });
-
-    // Step 6: Log Guardian decision (for audit trail)
-    await logGuardianDecision(
-      supabase,
-      validated.incidentId,
-      validated.message,
-      guardianResult
-    );
-
-    // Step 7: If Guardian blocks, return safety warning
-    if (guardianResult.decision === 'BLOCK') {
-      console.log('[Guardian] BLOCKED dangerous request');
-
-      // Save blocked message to conversation
-      await supabase.from('conversation_messages').insert({
-        incident_id: validated.incidentId,
-        role: 'user',
-        content: validated.message,
-        is_blocked: true,
-        block_reason: guardianResult.reasoning,
-      });
-
-      // Return safety lockout response
-      return NextResponse.json({
-        blocked: true,
-        decision: 'BLOCK',
-        confidence: guardianResult.confidence,
-        matchedRule: guardianResult.matchedRule,
-        reasoning: guardianResult.reasoning,
-        message:
-          '⚠️ SAFETY WARNING: This request has been blocked for your protection.',
-      });
+    // Extract photo URL from content if not provided in top-level body
+    let photoUrl = json.photoUrl;
+    if (!photoUrl && lastMessage.content) {
+      // Look for standard markdown image regex: ![alt](url)
+      const imageMatch = lastMessage.content.match(/!\[.*?\]\((.*?)\)/);
+      if (imageMatch && imageMatch[1]) {
+        photoUrl = imageMatch[1];
+      }
     }
 
-    // Step 8: Guardian allows - save user message
-    const { data: userMessage, error: userMsgError } = await supabase
-      .from('conversation_messages')
-      .insert({
-        incident_id: validated.incidentId,
-        role: 'user',
-        content: validated.message,
-        is_blocked: false,
-      })
-      .select()
-      .single();
-
-    if (userMsgError) {
-      console.error('[Chat] Error saving user message:', userMsgError);
+    if (!activeOrgId) {
+      return NextResponse.json({ error: 'User not associated with an organization' }, { status: 403 });
     }
 
-    // Step 9: Run Diagnostician Agent (streaming)
-    console.log('[Diagnostician] Generating response...');
-
-    const diagnosticianStream = await streamDiagnosticianAgent({
-      userMessage: validated.message,
-      machineModel: validated.machineModel,
-      conversationHistory: validated.conversationHistory,
-      photoUrl: validated.photoUrl,
-      orgId: profile.org_id,
-      incidentId: validated.incidentId,
+    // 1. Guardian Agent (Safety Check)
+    const guardianResult = await guardianAgent({
+      userMessage: lastMessage.content,
+      machineModel,
+      conversationHistory: messages.slice(0, -1) as any[],
+      orgId: activeOrgId
     });
 
-    // Step 10: Create streaming response
-    const stream = diagnosticianStream.toDataStreamResponse({
-      onFinish: async (completion) => {
-        // Save AI response to database when stream completes
-        try {
-          await supabase.from('conversation_messages').insert({
-            incident_id: validated.incidentId,
-            role: 'assistant',
-            content: completion.text,
-            is_blocked: false,
-          });
-
-          console.log('[Diagnostician] Response saved to database');
-        } catch (error) {
-          console.error('[Diagnostician] Error saving response:', error);
-        }
-      },
-    });
-
-    return stream;
-  } catch (error) {
-    console.error('[Chat API] Error:', error);
-
-    // Handle validation errors
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          details: error.errors,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Log error for monitoring
-    console.error('[Chat API] Unexpected error:', {
-      error,
-      timestamp: new Date().toISOString(),
-      duration: Date.now() - startTime,
-    });
-
-    // Return safe error response
-    return NextResponse.json(
-      {
-        error:
-          'An error occurred while processing your request. For safety, please ensure equipment is powered off and locked out before proceeding.',
-      },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Log Guardian decision to database for audit trail
- * Critical for liability and compliance
- */
-async function logGuardianDecision(
-  supabase: any,
-  incidentId: string,
-  userMessage: string,
-  guardianResult: any
-) {
-  try {
-    // Log to a safety_events table (if exists) or use conversation_messages metadata
+    // Save User Message
     await supabase.from('conversation_messages').insert({
-      incident_id: incidentId,
-      role: 'system',
-      content: `Guardian Decision: ${guardianResult.decision}`,
-      metadata: {
-        guardian_decision: guardianResult.decision,
-        confidence: guardianResult.confidence,
-        reasoning: guardianResult.reasoning,
-        matched_rule: guardianResult.matchedRule,
-        processing_time_ms: guardianResult.processingTimeMs,
-        user_message: userMessage,
-        timestamp: new Date().toISOString(),
-      },
+      incident_id: sessionId,
+      role: 'user',
+      content: lastMessage.content,
+      photo_url: (photoUrl && typeof photoUrl === 'string') ? photoUrl : null,
+      // metadata: guardianResult // Optional: store safety check result with user message?
+    } as any);
+
+    if (guardianResult.decision === 'BLOCK') {
+      // Save System/Block Message ??
+      // Spec says: "System MUST log all safety interventions" (FR-007)
+      // We can log as a message or just incident log.
+      // Let's log immediate block message.
+      await supabase.from('conversation_messages').insert({
+        incident_id: sessionId,
+        role: 'system',
+        content: `Safety Block: ${guardianResult.reasoning}`,
+        metadata: guardianResult as any
+      } as any);
+
+      return NextResponse.json({
+        error: 'Safety Block',
+        guardian: guardianResult
+      }, { status: 403 });
+    }
+
+    // 2. Retrieval (RAG)
+    const embedding = await generateEmbedding(lastMessage.content);
+    const retrievedContext = await searchManuals(lastMessage.content, embedding, {
+      orgId: activeOrgId,
+      limit: 3 // top 3 chunks
     });
 
-    console.log('[Guardian] Decision logged to database');
+    // Map SearchResult to ManualChunk
+    const manualChunks = retrievedContext.map(c => ({
+      chunkId: c.id,
+      manualTitle: c.title,
+      content: c.content,
+      pageNumber: null,
+      similarity: c.similarity
+    }));
+
+    // 3. Diagnostician Agent
+    const diagnosticResult = await diagnosticianAgent({
+      userMessage: lastMessage.content,
+      machineModel,
+      conversationHistory: messages.slice(0, -1) as any[],
+      orgId: activeOrgId,
+      retrievedContext: manualChunks,
+      photoUrl: json.photoUrl // Pass the photo URL if present
+    });
+
+    // Save Assistant Response
+    await supabase.from('conversation_messages').insert({
+      incident_id: sessionId,
+      role: 'assistant',
+      content: diagnosticResult.response,
+      metadata: {
+        citedManuals: diagnosticResult.citedManuals,
+        nextSteps: diagnosticResult.nextSteps,
+        confidence: diagnosticResult.metadata.confidence,
+        identifiedComponents: (diagnosticResult as any).identifiedComponents,
+        visualAnalysis: (diagnosticResult as any).visualAnalysis
+      } as any
+    } as any);
+
+    // 4. Return Response
+    return NextResponse.json(diagnosticResult);
+
   } catch (error) {
-    // Don't fail the request if logging fails
-    console.error('[Guardian] Failed to log decision:', error);
+    console.error('Error in chat route:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

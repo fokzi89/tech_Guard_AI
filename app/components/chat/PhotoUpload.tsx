@@ -54,10 +54,29 @@ export function PhotoUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [isDragging, setIsDragging] = useState(false);
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const processFile = (file: File) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file (JPEG, PNG, etc.)');
@@ -79,6 +98,12 @@ export function PhotoUpload({
       setPreviewUrl(reader.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFile(file);
   };
 
   const handleUploadAndVerify = async () => {
@@ -212,18 +237,47 @@ export function PhotoUpload({
         </div>
       )}
 
-      {/* Upload Button */}
-      {!selectedFile && uploadState === 'idle' && (
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full"
-          size="lg"
-          data-testid="photo-upload-button"
+      {/* Upload Area with Drag & Drop */}
+      {!selectedFile && (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+            isDragging ? "border-primary bg-primary/10" : "border-muted-foreground/25 hover:border-primary/50",
+            uploadState !== 'idle' && "opacity-50 pointer-events-none"
+          )}
         >
-          <Camera className="h-5 w-5 mr-2" />
-          Take or Select Photo
-        </Button>
+          {uploadState === 'idle' ? (
+            <div onClick={() => fileInputRef.current?.click()}>
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="p-4 bg-muted rounded-full">
+                  <Camera className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">
+                    {isDragging ? "Drop photo here" : "Click to upload or drag and drop"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    JPEG, PNG up to 10MB
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm font-medium">
+                {uploadState === 'uploading' ? 'Uploading...' : 'Verifying...'}
+              </p>
+            </div>
+          )}
+        </div>
       )}
+
+      {/* Upload Button (Legacy/Mobile Fallback if needed, but integration into dropzone usually sufficient) */}
+      {/* We replaced the separate button with the dropzone click handler above */}
 
       {/* Verify Button */}
       {selectedFile && uploadState === 'idle' && (
@@ -236,22 +290,6 @@ export function PhotoUpload({
           <Upload className="h-5 w-5 mr-2" />
           Upload and Verify
         </Button>
-      )}
-
-      {/* Upload Progress */}
-      {uploadState === 'uploading' && (
-        <div className="flex items-center justify-center space-x-2 p-4 bg-muted rounded-lg">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-sm">Uploading photo...</span>
-        </div>
-      )}
-
-      {/* Verification Progress */}
-      {uploadState === 'verifying' && (
-        <div className="flex items-center justify-center space-x-2 p-4 bg-muted rounded-lg">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-sm">Verifying safety isolation...</span>
-        </div>
       )}
 
       {/* Verification Result - Success */}

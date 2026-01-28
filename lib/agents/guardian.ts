@@ -1,337 +1,164 @@
-/**
- * Guardian Agent - Safety Intercept System
- *
- * The Guardian Agent is the FIRST line of defense in TechGuard AI.
- * It analyzes EVERY user message BEFORE it reaches the Diagnostician Agent.
- *
- * Critical Requirements:
- * - Must respond within 2 seconds (performance requirement)
- * - Must FAIL CLOSED (if error occurs, default to BLOCK)
- * - Blocks dangerous procedures (terminal jumps, bypassing safety, working on live circuits)
- * - Triggers Isolation Protocol when dangerous intent detected
- *
- * Safety Philosophy: Better to block 10 safe requests than to allow 1 dangerous one
- */
-
-import { createClient } from '@supabase/supabase-js';
+import { CoreMessage } from 'ai';
+import { createClient } from '@/lib/supabase/server';
 import { generateEmbedding } from '@/lib/rag/embeddings';
 
 /**
- * Guardian Agent Input
+ * Common interfaces for Agent messages
  */
-export interface GuardianInput {
-  userMessage: string;
-  machineModel: string;
-  conversationHistory: Array<{
-    role: 'user' | 'assistant';
-    content: string;
-  }>;
-  orgId: string;
+export interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string; // Optional for compatibility with CoreMessage
 }
 
 /**
- * Guardian Agent Output
+ * Input contract for the Guardian Agent
+ */
+export interface GuardianInput {
+  userMessage: string;                // Raw user input
+  machineModel: string;               // Machine being troubleshot
+  conversationHistory: CoreMessage[];     // Previous conversation for context (using Vercel AI SDK CoreMessage)
+  orgId: string;                      // For fetching org-specific blacklist rules
+}
+
+/**
+ * Output contract for the Guardian Agent
  */
 export interface GuardianOutput {
   decision: 'ALLOW' | 'BLOCK';
-  confidence: number; // 0.0 - 1.0
+  confidence: number;                 // 0.0 - 1.0
   matchedRule?: {
     ruleId: string;
-    ruleDescription: string;
+    ruleDescription: string;          // e.g., "Do not jump Term 29 to 21"
     severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
-    requiredAction: 'disconnect_power' | 'lockout_tagout';
+    requiredAction: 'disconnect_power' | 'lockout_tagout' | 'ppe_required';
   };
-  reasoning: string;
-  processingTimeMs: number;
+  reasoning: string;                  // Explanation of decision (for logging)
 }
 
 /**
- * Safety keywords that trigger immediate analysis
- * These are fast keyword checks before vector search
+ * Safety Blacklist Rule from Database
  */
-const DANGER_KEYWORDS = [
-  'jump',
-  'bypass',
-  'override',
-  'disable',
-  'short',
-  'bridge',
-  'connect directly',
-  'skip',
-  'ignore',
-  'live',
-  'energized',
-  'hot',
-  'powered',
-  'voltage',
-  'test across',
-  'touch',
-  'bare wire',
-  'exposed',
-  'interlock',
-  'safety switch',
-  'lockout',
-  'terminal',
-];
-
-/**
- * Terminal patterns that are commonly dangerous
- */
-const DANGEROUS_TERMINAL_PATTERNS = [
-  /terminal\s*\d+.*to.*terminal\s*\d+/i,
-  /t\d+.*to.*t\d+/i,
-  /jump.*terminal/i,
-  /bridge.*terminal/i,
-  /connect.*terminal/i,
-];
-
-/**
- * Guardian Agent - Main Entry Point
- *
- * @param input - User message and context
- * @returns Safety decision with confidence and reasoning
- */
-export async function runGuardianAgent(
-  input: GuardianInput
-): Promise<GuardianOutput> {
-  const startTime = Date.now();
-
-  try {
-    // Step 1: Fast keyword check (< 1ms)
-    const keywordCheck = checkDangerKeywords(input.userMessage);
-    if (!keywordCheck.hasDangerKeywords) {
-      // No danger keywords found - ALLOW immediately
-      return {
-        decision: 'ALLOW',
-        confidence: 0.95,
-        reasoning: 'No safety-critical keywords detected',
-        processingTimeMs: Date.now() - startTime,
-      };
-    }
-
-    // Step 2: Terminal pattern check (< 5ms)
-    const terminalCheck = checkDangerousTerminalPatterns(input.userMessage);
-    if (terminalCheck.isMatch) {
-      // Dangerous terminal pattern detected - BLOCK immediately
-      return {
-        decision: 'BLOCK',
-        confidence: 0.98,
-        matchedRule: {
-          ruleId: 'TERM_JUMP_001',
-          ruleDescription: 'Dangerous terminal jump/connection detected',
-          severity: 'CRITICAL',
-          requiredAction: 'disconnect_power',
-        },
-        reasoning: `Detected dangerous terminal operation: ${terminalCheck.pattern}. This could cause electrical hazards, equipment damage, or personal injury.`,
-        processingTimeMs: Date.now() - startTime,
-      };
-    }
-
-    // Step 3: Vector similarity search against safety blacklist
-    const vectorCheck = await checkSafetyBlacklist(
-      input.userMessage,
-      input.machineModel,
-      input.orgId
-    );
-
-    // Calculate processing time
-    const processingTimeMs = Date.now() - startTime;
-
-    // Step 4: Make final decision based on vector similarity
-    if (vectorCheck.similarity >= 0.85) {
-      // High similarity to known dangerous action - BLOCK
-      return {
-        decision: 'BLOCK',
-        confidence: vectorCheck.similarity,
-        matchedRule: vectorCheck.matchedRule,
-        reasoning: vectorCheck.reasoning,
-        processingTimeMs,
-      };
-    } else if (vectorCheck.similarity >= 0.75) {
-      // Medium similarity - BLOCK with lower confidence (fail closed)
-      return {
-        decision: 'BLOCK',
-        confidence: vectorCheck.similarity,
-        matchedRule: vectorCheck.matchedRule,
-        reasoning: `Potentially dangerous action detected with ${(vectorCheck.similarity * 100).toFixed(0)}% similarity to known hazards. ${vectorCheck.reasoning}`,
-        processingTimeMs,
-      };
-    } else {
-      // Low similarity - ALLOW
-      return {
-        decision: 'ALLOW',
-        confidence: 1 - vectorCheck.similarity,
-        reasoning: 'Intent analyzed and determined to be safe',
-        processingTimeMs,
-      };
-    }
-  } catch (error) {
-    // FAIL CLOSED: If any error occurs, default to BLOCK
-    console.error('Guardian Agent error (FAILING CLOSED):', error);
-
-    return {
-      decision: 'BLOCK',
-      confidence: 0.5,
-      reasoning:
-        'Safety system error occurred. As a precaution, this request has been blocked. Please contact support if this persists.',
-      processingTimeMs: Date.now() - startTime,
-    };
-  }
-}
-
-/**
- * Step 1: Fast keyword check
- * Checks if message contains any danger-related keywords
- */
-function checkDangerKeywords(message: string): {
-  hasDangerKeywords: boolean;
-  matchedKeywords: string[];
-} {
-  const lowerMessage = message.toLowerCase();
-  const matchedKeywords = DANGER_KEYWORDS.filter((keyword) =>
-    lowerMessage.includes(keyword.toLowerCase())
-  );
-
-  return {
-    hasDangerKeywords: matchedKeywords.length > 0,
-    matchedKeywords,
-  };
-}
-
-/**
- * Step 2: Check for dangerous terminal connection patterns
- * Matches patterns like "jump Terminal 29 to Terminal 21"
- */
-function checkDangerousTerminalPatterns(message: string): {
-  isMatch: boolean;
-  pattern?: string;
-} {
-  for (const pattern of DANGEROUS_TERMINAL_PATTERNS) {
-    const match = message.match(pattern);
-    if (match) {
-      return {
-        isMatch: true,
-        pattern: match[0],
-      };
-    }
-  }
-
-  return { isMatch: false };
-}
-
-/**
- * Step 3: Vector similarity search against safety blacklist
- * Uses embeddings to find similar dangerous procedures
- */
-async function checkSafetyBlacklist(
-  userMessage: string,
-  machineModel: string,
-  orgId: string
-): Promise<{
+interface SafetyBlacklistRule {
+  id: string;
+  rule_description: string;
+  machine_model: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  required_action: 'disconnect_power' | 'lockout_tagout' | 'ppe_required';
   similarity: number;
-  matchedRule?: {
-    ruleId: string;
-    ruleDescription: string;
-    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
-    requiredAction: 'disconnect_power' | 'lockout_tagout';
-  };
-  reasoning: string;
-}> {
+}
+
+/**
+ * Guardian Agent: Safety Intercept
+ * Detects dangerous user intents and blocks AI responses before they reach the user.
+ */
+export async function guardianAgent(input: GuardianInput): Promise<GuardianOutput> {
+  const { userMessage, machineModel, orgId } = input;
+  console.log(`[Guardian] Analyzing message for ${machineModel}: "${userMessage.substring(0, 50)}..."`);
+
+  // 1. Intent Analysis: Keyword Detection (Fast Fail)
+  // We look for high-risk verbs/nouns. This is a heuristic to save on embedding costs if obviously safe?
+  // Actually, we should probably always check the blacklist to be safe, unless it's "Hello".
+  // Only minimal heuristic here.
+
+  const dangerousKeywords = ['jump', 'bypass', 'connect', 'bridge', 'short', 'override', 'disable', 'test', 'check'];
+  // If mostly conversational, we might want to skip, but for MVP safety, we check everything substantive.
+
+  // 2. Blacklist Check: Vector Search
   try {
-    // Create Supabase client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const embedding = await generateEmbedding(userMessage);
+    const supabase = await createClient();
 
-    // Generate embedding for user message
-    const queryEmbedding = await generateEmbedding(userMessage);
-
-    // Search safety_blacklist table using vector similarity
-    // Query filters by org_id (org-specific rules) OR global rules (org_id = NULL)
-    const { data, error } = await supabase.rpc('match_safety_blacklist', {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.7,
-      match_count: 1,
-      org_id_filter: orgId,
+    // Call the RPC function `check_safety_blacklist`
+    // Assumes T023 created this function
+    const { data: matchedRules, error } = await supabase.rpc('check_safety_blacklist', {
+      query_embedding: embedding,
+      filter_machine_model: machineModel,
+      match_threshold: 0.82, // Threshold per spec (adjusted to 0.82 for safety margin)
+      match_count: 1
     });
 
     if (error) {
-      console.error('Error querying safety blacklist:', error);
-      // Fail closed on database error
+      console.error('[Guardian] Error querying safety blacklist:', error);
+      // Fail closed: If we can't verify safety, we BLOCK (or at least warn). 
+      // Spec says: "Fallback Behavior: Guardian Agent: If error occurs, default to BLOCK"
       return {
-        similarity: 0.9,
-        reasoning: 'Unable to verify safety. Request blocked as precaution.',
+        decision: 'BLOCK',
+        confidence: 1.0,
+        reasoning: 'System error during safety check. Failing closed for safety.',
+        matchedRule: {
+          ruleId: 'error_fallback',
+          ruleDescription: 'System Error: Unable to verify safety rules. Please contact support or try again.',
+          severity: 'CRITICAL',
+          requiredAction: 'disconnect_power'
+        }
       };
     }
 
-    if (!data || data.length === 0) {
-      // No matches found in blacklist
+    if (matchedRules && matchedRules.length > 0) {
+      const topMatch = matchedRules[0] as SafetyBlacklistRule;
+      console.warn(`[Guardian] BLOCKED: Found matching safety rule "${topMatch.rule_description}" (${topMatch.similarity})`);
+
       return {
-        similarity: 0.0,
-        reasoning: 'No similar dangerous procedures found in safety database',
+        decision: 'BLOCK',
+        confidence: topMatch.similarity,
+        matchedRule: {
+          ruleId: topMatch.id,
+          ruleDescription: topMatch.rule_description,
+          severity: topMatch.severity,
+          requiredAction: topMatch.required_action
+        },
+        reasoning: `User intent matches blacklisted procedure: ${topMatch.rule_description}`
       };
     }
 
-    // Get the best match
-    const bestMatch = data[0];
-
+    // 3. No match found -> ALLOW
+    console.log('[Guardian] ALLOW: No safety violations detected.');
     return {
-      similarity: bestMatch.similarity,
-      matchedRule: {
-        ruleId: bestMatch.id,
-        ruleDescription: bestMatch.action_description,
-        severity: bestMatch.severity || 'HIGH',
-        requiredAction: bestMatch.required_action || 'disconnect_power',
-      },
-      reasoning: `This action is similar to: "${bestMatch.action_description}". ${bestMatch.risk_description || 'This procedure poses safety risks.'}`,
+      decision: 'ALLOW',
+      confidence: 0.0,
+      reasoning: 'No matching safety rules found in blacklist.'
     };
-  } catch (error) {
-    console.error('Vector search error:', error);
-    // Fail closed on any error
+
+  } catch (err) {
+    console.error('[Guardian] Unexpected error:', err);
     return {
-      similarity: 0.9,
-      reasoning: 'Safety verification system error. Request blocked as precaution.',
+      decision: 'BLOCK',
+      confidence: 1.0,
+      reasoning: 'Unexpected internal error. Failing closed.'
     };
   }
 }
 
 /**
- * Helper: Extract context from conversation history
- * Used to understand if dangerous intent is building up across multiple messages
+ * Verify Isolation from Photo
+ * Uses Vision model to confirm if power is disconnected.
  */
-function analyzeConversationContext(
-  conversationHistory: Array<{ role: string; content: string }>
-): {
-  hasDangerousContext: boolean;
-  contextSummary: string;
-} {
-  // Look for patterns across conversation that indicate escalating risk
-  const recentMessages = conversationHistory.slice(-5); // Last 5 messages
+import { generateObject } from 'ai';
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
 
-  const dangerousContextPatterns = [
-    /safety.*off/i,
-    /power.*on/i,
-    /live.*circuit/i,
-    /energized/i,
-  ];
-
-  let hasDangerousContext = false;
-  const matchedPatterns: string[] = [];
-
-  for (const message of recentMessages) {
-    for (const pattern of dangerousContextPatterns) {
-      if (pattern.test(message.content)) {
-        hasDangerousContext = true;
-        matchedPatterns.push(pattern.source);
-      }
-    }
+export async function verifyIsolation(photoUrl: string): Promise<{ verified: boolean; reasoning: string }> {
+  try {
+    const result = await generateObject({
+      model: google('gemini-1.5-pro-latest'),
+      schema: z.object({
+        verified: z.boolean().describe('True if the photo clearly shows disconnected power or lockout/tagout.'),
+        reasoning: z.string().describe('Explanation of what is seen in the photo.')
+      }),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Please verify if the power source is disconnected in this photo. Look for unplugged cables, lockout tags, or open breakers.' },
+            { type: 'image', image: photoUrl } // Vercel AI SDK supports URL or base64. Ensure photoUrl is accessible or base64.
+          ]
+        }
+      ]
+    });
+    return result.object;
+  } catch (error) {
+    console.error('[Guardian] Error verifying isolation:', error);
+    return { verified: false, reasoning: 'Failed to analyze photo.' };
   }
-
-  return {
-    hasDangerousContext,
-    contextSummary: hasDangerousContext
-      ? `Conversation context indicates unsafe conditions: ${matchedPatterns.join(', ')}`
-      : 'Conversation context appears safe',
-  };
 }

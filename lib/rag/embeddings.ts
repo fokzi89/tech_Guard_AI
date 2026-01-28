@@ -3,9 +3,16 @@ import OpenAI from 'openai'
 /**
  * OpenAI client for embedding generation
  */
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-})
+let openaiClient: OpenAI | null = null
+
+function getOpenAIClient() {
+    if (!openaiClient) {
+        openaiClient = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        })
+    }
+    return openaiClient
+}
 
 /**
  * Embedding model configuration
@@ -18,7 +25,8 @@ const EMBEDDING_DIMENSIONS = 1536
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
     try {
-        const response = await openai.embeddings.create({
+        const client = getOpenAIClient()
+        const response = await client.embeddings.create({
             model: EMBEDDING_MODEL,
             input: text,
             encoding_format: 'float',
@@ -37,6 +45,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  */
 export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
     try {
+        const client = getOpenAIClient()
         // OpenAI has a limit on batch size, so we chunk if necessary
         const BATCH_SIZE = 100
         const embeddings: number[][] = []
@@ -44,13 +53,13 @@ export async function generateEmbeddingsBatch(texts: string[]): Promise<number[]
         for (let i = 0; i < texts.length; i += BATCH_SIZE) {
             const batch = texts.slice(i, i + BATCH_SIZE)
 
-            const response = await openai.embeddings.create({
+            const response = await client.embeddings.create({
                 model: EMBEDDING_MODEL,
                 input: batch,
                 encoding_format: 'float',
             })
 
-            embeddings.push(...response.data.map(d => d.embedding))
+            embeddings.push(...response.data.map((d: any) => d.embedding))
         }
 
         return embeddings

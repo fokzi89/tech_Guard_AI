@@ -78,7 +78,7 @@ export default function NewTroubleshootingSessionPage() {
       const data = await response.json();
 
       // Redirect to chat page
-      router.push(`/dashboard/troubleshoot/${data.incident.id}`);
+      router.push(`/dashboard/troubleshoot/${data.id}`);
     } catch (err) {
       console.error('Error creating session:', err);
       setError(err instanceof Error ? err.message : 'Failed to create session');

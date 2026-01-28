@@ -162,11 +162,11 @@ function SystemMessage({ message }: { message: Message }) {
         className={cn(
           'max-w-md px-4 py-2 rounded-lg text-sm flex items-center space-x-2',
           isGuardianBlock &&
-            'bg-destructive/10 text-destructive border border-destructive/20',
+          'bg-destructive/10 text-destructive border border-destructive/20',
           isGuardianAllow && 'bg-green-500/10 text-green-700 dark:text-green-400',
           !isGuardianBlock &&
-            !isGuardianAllow &&
-            'bg-muted text-muted-foreground'
+          !isGuardianAllow &&
+          'bg-muted text-muted-foreground'
         )}
         data-testid={isGuardianBlock ? 'guardian-block-warning' : 'system-message'}
       >
@@ -208,23 +208,48 @@ function BlockedMessage({ message }: { message: Message }) {
 }
 
 function MessageContent({ content }: { content: string }) {
-  // Parse content for manual citations [Manual: Section X.Y]
-  const parts = content.split(/(\[Manual:.*?\])/g);
+  // 1. Regex to split by markdown images: ![alt](url)
+  // 2. Regex to split by Manual citations: [Manual: ...]
+  // We'll process images first, then map the text parts to check for manuals.
+
+  const parts = content.split(/(!\[.*?\]\(.*?\))/g);
 
   return (
     <>
       {parts.map((part, index) => {
-        if (part.startsWith('[Manual:')) {
+        // Check for Image
+        const imageMatch = part.match(/!\[(.*?)\]\((.*?)\)/);
+        if (imageMatch) {
+          const [_, alt, src] = imageMatch;
           return (
-            <span
+            <img
               key={index}
-              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-            >
-              {part.replace(/[\[\]]/g, '')}
-            </span>
+              src={src}
+              alt={alt}
+              className="max-w-full rounded-lg border border-border my-2 max-h-64 object-cover"
+            />
           );
         }
-        return <span key={index}>{part}</span>;
+
+        // Process citations within text parts
+        const subParts = part.split(/(\[Manual:.*?\])/g);
+        return (
+          <span key={index}>
+            {subParts.map((subPart, subIndex) => {
+              if (subPart.startsWith('[Manual:')) {
+                return (
+                  <span
+                    key={subIndex}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20 mx-1"
+                  >
+                    {subPart.replace(/[\[\]]/g, '')}
+                  </span>
+                );
+              }
+              return <span key={subIndex}>{subPart}</span>;
+            })}
+          </span>
+        );
       })}
     </>
   );

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/app/components/ui/button';
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, file?: File) => void;
   onPhotoUploadClick?: () => void;
   disabled?: boolean;
   isLoading?: boolean;
@@ -105,16 +105,42 @@ export function MessageInput({
     }
   };
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      // Handle error or just ignore
+      return;
+    }
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setPreviewUrl(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
 
     const trimmedMessage = message.trim();
-    if (!trimmedMessage || disabled || isLoading) return;
+    if ((!trimmedMessage && !selectedFile) || disabled || isLoading) return;
     if (trimmedMessage.length > maxLength) return;
 
-    onSendMessage(trimmedMessage);
+    onSendMessage(trimmedMessage, selectedFile || undefined);
     setMessage('');
     setSafetyCheck(null);
+    clearFile();
 
     // Reset textarea height
     if (textareaRef.current) {
@@ -156,22 +182,44 @@ export function MessageInput({
         </div>
       )}
 
+      {/* Photo Preview */}
+      {previewUrl && (
+        <div className="px-4 pt-4 pb-0 relative inline-block">
+          <div className="relative inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="Preview" className="h-20 w-auto rounded border border-border" />
+            <button
+              onClick={clearFile}
+              className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow-sm hover:bg-destructive/90"
+              type="button"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 18 18" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="p-4">
         <div className="flex items-end space-x-2">
           {/* Photo Upload Button */}
-          {onPhotoUploadClick && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={onPhotoUploadClick}
-              disabled={isDisabled}
-              className="flex-shrink-0"
-              data-testid="photo-upload-trigger"
-            >
-              <ImageIcon className="h-5 w-5" />
-            </Button>
-          )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileSelect}
+          />
+          <Button
+            type="button"
+            variant={selectedFile ? "secondary" : "outline"}
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isDisabled}
+            className="flex-shrink-0"
+            data-testid="photo-upload-trigger"
+          >
+            <ImageIcon className="h-5 w-5" />
+          </Button>
 
           {/* Message Input Area */}
           <div className="flex-1 relative">

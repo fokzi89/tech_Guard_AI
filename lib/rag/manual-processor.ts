@@ -1,4 +1,4 @@
-import { PDFParse } from 'pdf-parse'
+const pdfParse = require('pdf-parse');
 import { generateEmbedding, prepareTextForEmbedding } from './embeddings'
 
 /**
@@ -40,21 +40,20 @@ export interface SafetyWarning {
 /**
  * Extract text from PDF buffer
  */
+/**
+ * Extract text from PDF buffer
+ */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<{
     text: string
     totalPages: number
 }> {
     try {
-        // TODO: Fix PDF parsing implementation
-        // const parser = new PDFParse({})
-        // const data = await parser.parse(pdfBuffer)
+        const data = await pdfParse(pdfBuffer);
 
-        throw new Error('PDF parsing not yet implemented')
-
-        // return {
-        //     text: data.text,
-        //     totalPages: data.numpages,
-        // }
+        return {
+            text: data.text,
+            totalPages: data.numpages,
+        }
     } catch (error) {
         console.error('Error extracting text from PDF:', error)
         throw new Error('Failed to extract text from PDF')

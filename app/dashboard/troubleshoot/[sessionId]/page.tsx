@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { MessageList, type Message } from '@/app/components/chat/MessageList';
 import { MessageInput } from '@/app/components/chat/MessageInput';

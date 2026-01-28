@@ -1,96 +1,45 @@
-/**
- * Safety Check API Route
- *
- * Provides on-demand safety checks using the Guardian Agent.
- * Useful for real-time validation as the user types or before sending.
- *
- * POST /api/safety/check - Check if message is safe
- */
-
-import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { guardianAgent } from '@/lib/agents/guardian';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { runGuardianAgent } from '@/lib/agents/guardian';
 
-/**
- * Request schema
- */
-const safetyCheckSchema = z.object({
-  message: z.string().min(1).max(5000),
-  machineModel: z.string().min(1),
-  incidentId: z.string().uuid().optional(),
+const checkSchema = z.object({
+  userMessage: z.string().min(1),
+  machineModel: z.string().min(1)
 });
 
-/**
- * POST /api/safety/check
- *
- * Run Guardian Agent safety check on user message
- */
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    // Parse and validate request
-    const body = await request.json();
-    const validated = safetyCheckSchema.parse(body);
-
-    // Get authenticated user
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user profile for org_id
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('org_id')
-      .eq('id', user.id)
-      .single();
+    const json = await req.json();
+    const { userMessage, machineModel } = checkSchema.parse(json);
 
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      );
+    // Get org_id
+    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+    const orgId = profile?.org_id;
+
+    if (!orgId) {
+      return NextResponse.json({ error: 'User not associated with an organization' }, { status: 403 });
     }
 
-    // Run Guardian Agent
-    const guardianResult = await runGuardianAgent({
-      userMessage: validated.message,
-      machineModel: validated.machineModel,
-      conversationHistory: [], // Real-time check, no history needed
-      orgId: profile.org_id,
+    // Use Guardian Agent
+    const result = await guardianAgent({
+      userMessage,
+      machineModel,
+      conversationHistory: [], // Isolated check, no history context
+      orgId
     });
 
-    // Return safety analysis
-    return NextResponse.json({
-      safe: guardianResult.decision === 'ALLOW',
-      decision: guardianResult.decision,
-      confidence: guardianResult.confidence,
-      reasoning: guardianResult.reasoning,
-      matchedRule: guardianResult.matchedRule,
-      processingTimeMs: guardianResult.processingTimeMs,
-    });
+    return NextResponse.json(result);
+
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    console.error('[Safety Check] Error:', error);
-
-    // Fail closed - return unsafe on error
-    return NextResponse.json({
-      safe: false,
-      decision: 'BLOCK',
-      confidence: 0.5,
-      reasoning: 'Safety check failed due to system error. Blocking as precaution.',
-      error: 'Internal error',
-    });
+    console.error('Error in safety check:', error);
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }

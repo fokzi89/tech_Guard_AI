@@ -107,53 +107,53 @@ Next.js 14 App Router structure:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T044 [P] [US1] Create E2E test "The Death Jump" in tests/e2e/death-jump.spec.ts verifying dangerous terminal jump is blocked
-- [ ] T045 [P] [US1] Create E2E test for safety lockout modal in tests/e2e/safety-lockout.spec.ts verifying chat input is disabled
-- [ ] T046 [P] [US1] Create E2E test for photo verification workflow in tests/e2e/photo-verification.spec.ts
+- [x] T044 [P] [US1] Create E2E test "The Death Jump" in tests/e2e/death-jump.spec.ts verifying dangerous terminal jump is blocked
+- [x] T045 [P] [US1] Create E2E test for safety lockout modal in tests/e2e/safety-lockout.spec.ts verifying chat input is disabled
+- [x] T046 [P] [US1] Create E2E test for photo verification workflow in tests/e2e/photo-verification.spec.ts
 
 ### Guardian Agent Implementation
 
-- [ ] T047 [P] [US1] Create Guardian Agent contract interface in lib/agents/guardian.ts (GuardianInput, GuardianOutput types)
-- [ ] T048 [US1] Implement Guardian Agent intent analysis logic in lib/agents/guardian.ts
-- [ ] T049 [US1] Implement safety blacklist vector search in Guardian Agent
-- [ ] T050 [US1] Implement decision logic (ALLOW/BLOCK) with confidence scoring in Guardian Agent
-- [ ] T051 [P] [US1] Create unit tests for Guardian Agent in tests/unit/agents/guardian.test.ts
+- [x] T047 [P] [US1] Create Guardian Agent contract interface in lib/agents/guardian.ts (GuardianInput, GuardianOutput types)
+- [x] T048 [US1] Implement Guardian Agent intent analysis logic in lib/agents/guardian.ts
+- [x] T049 [US1] Implement safety blacklist vector search in Guardian Agent
+- [x] T050 [US1] Implement decision logic (ALLOW/BLOCK) with confidence scoring in Guardian Agent
+- [x] T051 [P] [US1] Create unit tests for Guardian Agent in tests/unit/agents/guardian.test.ts
 
 ### Diagnostician Agent Implementation
 
-- [ ] T052 [P] [US1] Create Diagnostician Agent contract interface in lib/agents/diagnostician.ts (DiagnosticianInput, DiagnosticianOutput types)
-- [ ] T053 [US1] Implement Diagnostician Agent with Vercel AI SDK in lib/agents/diagnostician.ts
-- [ ] T054 [US1] Integrate RAG manual search into Diagnostician Agent
-- [ ] T055 [US1] Implement system prompt for Diagnostician Agent with safety mindset
-- [ ] T056 [P] [US1] Create unit tests for Diagnostician Agent in tests/unit/agents/diagnostician.test.ts
+- [x] T052 [P] [US1] Create Diagnostician Agent contract interface in lib/agents/diagnostician.ts (DiagnosticianInput, DiagnosticianOutput types)
+- [x] T053 [US1] Implement Diagnostician Agent with Vercel AI SDK in lib/agents/diagnostician.ts
+- [x] T054 [US1] Integrate RAG manual search into Diagnostician Agent
+- [x] T055 [US1] Implement system prompt for Diagnostician Agent with safety mindset
+- [x] T056 [P] [US1] Create unit tests for Diagnostician Agent in tests/unit/agents/diagnostician.test.ts
 
 ### Chat API Endpoints
 
-- [ ] T057 [P] [US1] Create POST /api/chat route in app/api/chat/route.ts
-- [ ] T058 [US1] Implement Guardian Agent call in chat route (runs first on every message)
-- [ ] T059 [US1] Implement Diagnostician Agent call in chat route (runs if Guardian allows)
-- [ ] T060 [US1] Implement streaming response for AI completions in chat route
-- [ ] T061 [US1] Implement error handling and logging in chat route
-- [ ] T062 [P] [US1] Create POST /api/chat/session route in app/api/chat/session/route.ts for creating new troubleshooting sessions
-- [ ] T063 [P] [US1] Create POST /api/safety/check route in app/api/safety/check/route.ts for safety blacklist checking
-- [ ] T064 [P] [US1] Create POST /api/safety/verify-photo route in app/api/safety/verify-photo/route.ts for photo verification
+- [x] T057 [P] [US1] Create POST /api/chat route in app/api/chat/route.ts
+- [x] T058 [US1] Implement Guardian Agent call in chat route (runs first on every message)
+- [x] T059 [US1] Implement Diagnostician Agent call in chat route (runs if Guardian allows)
+- [x] T060 [US1] Implement streaming response for AI completions in chat route
+- [x] T061 [US1] Implement error handling and logging in chat route
+- [x] T062 [P] [US1] Create POST /api/chat/session route in app/api/chat/session/route.ts for creating new troubleshooting sessions
+- [x] T063 [P] [US1] Create POST /api/safety/check route in app/api/safety/check/route.ts for safety blacklist checking
+- [x] T064 [P] [US1] Create POST /api/safety/verify-photo route in app/api/safety/verify-photo/route.ts for photo verification
 
 ### Chat UI Components
 
-- [ ] T065 [P] [US1] Create MessageList component in app/components/chat/MessageList.tsx
-- [ ] T066 [P] [US1] Create MessageInput component in app/components/chat/MessageInput.tsx
-- [ ] T067 [P] [US1] Create SafetyLockoutModal component in app/components/chat/SafetyLockoutModal.tsx
-- [ ] T068 [P] [US1] Create PhotoUpload component in app/components/chat/PhotoUpload.tsx
-- [ ] T069 [US1] Create chat page layout in app/(dashboard)/troubleshoot/[sessionId]/page.tsx
-- [ ] T070 [US1] Integrate chat components with API route using Vercel AI SDK useChat hook
-- [ ] T071 [US1] Implement safety lockout modal trigger on BLOCK response
-- [ ] T072 [US1] Implement photo verification flow in chat page
+- [x] T065 [P] [US1] Create MessageList component in app/components/chat/MessageList.tsx
+- [x] T066 [P] [US1] Create MessageInput component in app/components/chat/MessageInput.tsx
+- [x] T067 [P] [US1] Create SafetyLockoutModal component in app/components/chat/SafetyLockoutModal.tsx
+- [x] T068 [P] [US1] Create PhotoUpload component in app/components/chat/PhotoUpload.tsx
+- [x] T069 [US1] Create chat page layout in app/(dashboard)/troubleshoot/[sessionId]/page.tsx
+- [x] T070 [US1] Integrate chat components with API route using Vercel AI SDK useChat hook
+- [x] T071 [US1] Implement safety lockout modal trigger on BLOCK response
+- [x] T072 [US1] Implement photo verification flow in chat page
 
 ### Session Management
 
-- [ ] T073 [P] [US1] Create session creation page in app/(dashboard)/troubleshoot/new/page.tsx
-- [ ] T074 [P] [US1] Create session history page in app/(dashboard)/troubleshoot/history/page.tsx
-- [ ] T075 [US1] Implement session state persistence in database (incidents, conversation_messages tables)
+- [x] T073 [P] [US1] Create session creation page in app/(dashboard)/troubleshoot/new/page.tsx
+- [x] T074 [P] [US1] Create session history page in app/(dashboard)/troubleshoot/history/page.tsx
+- [x] T075 [US1] Implement session state persistence in database (incidents, conversation_messages tables)
 
 ### Authentication Pages
 
@@ -173,34 +173,34 @@ Next.js 14 App Router structure:
 
 ### E2E Tests for User Story 2
 
-- [ ] T079 [P] [US2] Create E2E test for data isolation in tests/e2e/data-isolation.spec.ts verifying org A cannot access org B data
-- [ ] T080 [P] [US2] Create integration test for RLS policies in tests/integration/rls-policies.test.ts
+- [x] T079 [P] [US2] Create E2E test for data isolation in tests/e2e/data-isolation.spec.ts verifying org A cannot access org B data
+- [x] T080 [P] [US2] Create integration test for RLS policies in tests/integration/rls-policies.test.ts
 
 ### Organization & User Management
 
-- [ ] T081 [P] [US2] Create GET /api/org/users route in app/api/org/users/route.ts for listing organization users
-- [ ] T082 [P] [US2] Create POST /api/org/users/invite route in app/api/org/users/invite/route.ts for inviting users
-- [ ] T083 [US2] Implement organization user management UI in app/(dashboard)/org/users/page.tsx
-- [ ] T084 [US2] Create user invitation form component in app/components/admin/UserInvitationForm.tsx
+- [x] T081 [P] [US2] Create GET /api/org/users route in app/api/org/users/route.ts for listing organization users
+- [x] T082 [P] [US2] Create POST /api/org/users/invite route in app/api/org/users/invite/route.ts for inviting users
+- [x] T083 [US2] Implement organization user management UI in app/(dashboard)/org/users/page.tsx
+- [x] T084 [US2] Create user invitation form component in app/components/admin/UserInvitationForm.tsx
 
 ### RLS Policy Validation
 
-- [ ] T085 [US2] Create RLS policy testing utility in lib/utils/rls.ts
-- [ ] T086 [US2] Validate all RLS policies are correctly enforcing org_id filtering
-- [ ] T087 [US2] Create integration tests for cross-tenant isolation in tests/integration/multi-tenancy.test.ts
+- [x] T085 [US2] Create RLS policy testing utility in lib/utils/rls.ts
+- [x] T086 [US2] Validate all RLS policies are correctly enforcing org_id filtering
+- [x] T087 [US2] Create integration tests for cross-tenant isolation in tests/integration/multi-tenancy.test.ts
 
 ### Manual Upload & Management
 
-- [ ] T088 [P] [US2] Create POST /api/manuals/upload route in app/api/manuals/upload/route.ts
-- [ ] T089 [US2] Implement PDF upload to Supabase Storage in manual upload route
-- [ ] T090 [US2] Implement PDF text extraction and chunking in manual upload route
-- [ ] T091 [US2] Implement embedding generation for manual chunks in manual upload route
-- [ ] T092 [US2] Store manual chunks with embeddings in manuals table
-- [ ] T093 [P] [US2] Create GET /api/manuals/search route in app/api/manuals/search/route.ts for RAG-based search
-- [ ] T094 [P] [US2] Create GET /api/manuals/:manualId route in app/api/manuals/[manualId]/route.ts
-- [ ] T095 [P] [US2] Create DELETE /api/manuals/:manualId route in app/api/manuals/[manualId]/route.ts for archiving
-- [ ] T096 [US2] Create manual upload page in app/(dashboard)/org/manuals/page.tsx
-- [ ] T097 [US2] Create manual list component in app/components/admin/ManualsList.tsx
+- [x] T088 [P] [US2] Create POST /api/manuals/upload route in app/api/manuals/upload/route.ts
+- [x] T089 [US2] Implement PDF upload to Supabase Storage in manual upload route
+- [x] T090 [US2] Implement PDF text extraction and chunking in manual upload route
+- [x] T091 [US2] Implement embedding generation for manual chunks in manual upload route
+- [x] T092 [US2] Store manual chunks with embeddings in manuals table
+- [x] T093 [P] [US2] Create GET /api/manuals/search route in app/api/manuals/search/route.ts for RAG-based search
+- [x] T094 [P] [US2] Create GET /api/manuals/:manualId route in app/api/manuals/[manualId]/route.ts
+- [x] T095 [P] [US2] Create DELETE /api/manuals/:manualId route in app/api/manuals/[manualId]/route.ts for archiving
+- [x] T096 [US2] Create manual upload page in app/(dashboard)/org/manuals/page.tsx
+- [x] T097 [US2] Create manual list component in app/components/admin/ManualsList.tsx
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently. Data isolation is enforced, and organizations can manage their own manuals securely.
 
@@ -214,33 +214,33 @@ Next.js 14 App Router structure:
 
 ### Curator Agent Implementation
 
-- [ ] T098 [P] [US3] Create Curator Agent contract interface in lib/agents/curator.ts (CuratorInput, CuratorOutput types)
-- [ ] T099 [US3] Implement Curator Agent with Vercel AI SDK in lib/agents/curator.ts
-- [ ] T100 [US3] Implement conversation parsing logic to extract key events
-- [ ] T101 [US3] Implement "As Found" extraction from initial messages
-- [ ] T102 [US3] Implement "Work Performed" extraction from conversation history
-- [ ] T103 [US3] Implement "As Left" determination from final status
-- [ ] T104 [US3] Implement CMMS report formatting logic
-- [ ] T105 [P] [US3] Create unit tests for Curator Agent in tests/unit/agents/curator.test.ts
+- [x] T098 [P] [US3] Create Curator Agent contract interface in lib/agents/curator.ts (CuratorInput, CuratorOutput types)
+- [x] T099 [US3] Implement Curator Agent with Vercel AI SDK in lib/agents/curator.ts
+- [x] T100 [US3] Implement conversation parsing logic to extract key events
+- [x] T101 [US3] Implement "As Found" extraction from initial messages
+- [x] T102 [US3] Implement "Work Performed" extraction from conversation history
+- [x] T103 [US3] Implement "As Left" determination from final status
+- [x] T104 [US3] Implement CMMS report formatting logic
+- [x] T105 [P] [US3] Create unit tests for Curator Agent in tests/unit/agents/curator.test.ts
 
 ### Reports API
 
-- [ ] T106 [P] [US3] Create POST /api/reports/generate route in app/api/reports/generate/route.ts
-- [ ] T107 [US3] Integrate Curator Agent into report generation route
-- [ ] T108 [US3] Store generated reports in service_reports table
-- [ ] T109 [P] [US3] Create GET /api/reports/:reportId route in app/api/reports/[reportId]/route.ts
+- [x] T106 [P] [US3] Create POST /api/reports/generate route in app/api/reports/generate/route.ts
+- [x] T107 [US3] Integrate Curator Agent into report generation route
+- [x] T108 [US3] Store generated reports in service_reports table
+- [x] T109 [P] [US3] Create GET /api/reports/:reportId route in app/api/reports/[reportId]/route.ts
 
 ### Reports UI
 
-- [ ] T110 [P] [US3] Create ServiceReportCard component in app/components/reports/ServiceReportCard.tsx
-- [ ] T111 [P] [US3] Create CopyButton component in app/components/reports/CopyButton.tsx
-- [ ] T112 [US3] Add "Generate Report" button to chat interface
-- [ ] T113 [US3] Implement report display modal in chat page
-- [ ] T114 [US3] Implement copy-to-clipboard functionality
+- [x] T110 [P] [US3] Create ServiceReportCard component in app/components/reports/ServiceReportCard.tsx
+- [x] T111 [P] [US3] Create CopyButton component in app/components/reports/CopyButton.tsx
+- [x] T112 [US3] Add "Generate Report" button to chat interface
+- [x] T113 [US3] Implement report display modal in chat page
+- [x] T114 [US3] Implement copy-to-clipboard functionality
 
 ### E2E Test for User Story 3
 
-- [ ] T115 [US3] Create E2E test for CMMS report accuracy in tests/e2e/cmms-report.spec.ts verifying report matches conversation
+- [x] T115 [US3] Create E2E test for CMMS report accuracy in tests/e2e/cmms-report.spec.ts verifying report matches conversation
 
 **Checkpoint**: All three user stories (Safe Troubleshooting, Data Isolation, CMMS Reports) should now work independently. Technicians can troubleshoot safely and generate professional service reports.
 
@@ -254,27 +254,17 @@ Next.js 14 App Router structure:
 
 ### Admin API Endpoints
 
-- [ ] T116 [P] [US4] Create GET /api/admin/organizations route in app/api/admin/organizations/route.ts
-- [ ] T117 [P] [US4] Create PATCH /api/admin/organizations/:orgId route in app/api/admin/organizations/[orgId]/route.ts for status updates
-- [ ] T118 [P] [US4] Create POST /api/admin/impersonate route in app/api/admin/impersonate/route.ts
-
-### Admin UI Components
-
-- [ ] T119 [P] [US4] Create OrganizationTable component in app/components/admin/OrganizationTable.tsx
-- [ ] T120 [P] [US4] Create ImpersonationControl component in app/components/admin/ImpersonationControl.tsx
-- [ ] T121 [US4] Create Super Admin dashboard page in app/(dashboard)/admin/organizations/page.tsx
-- [ ] T122 [US4] Integrate organization management APIs with admin UI
-
-### Impersonation Logic
-
-- [ ] T123 [US4] Implement impersonation token generation with JWT
-- [ ] T124 [US4] Update authentication middleware to handle impersonation tokens
-- [ ] T125 [US4] Add impersonation indicator to UI header when active
+- [x] T116 [P] [US4] Create GET /api/admin/organizations route in app/api/admin/organizations/route.ts
+- [x] T117 [P] [US4] Create PATCH /api/admin/organizations/:orgId route in app/api/admin/organizations/[orgId]/route.ts for status updates
+- [x] T118 [P] [US4] Create POST /api/admin/impersonate route in app/api/admin/impersonate/route.ts
+- [x] T123 [US4] Implement impersonation token generation with JWT
+- [x] T124 [US4] Update authentication middleware to handle impersonation tokens
+- [x] T125 [US4] Add impersonation indicator to UI header when active
 - [ ] T126 [US4] Implement impersonation audit logging
 
 ### E2E Test for User Story 4
 
-- [ ] T127 [US4] Create E2E test for impersonation in tests/e2e/impersonation.spec.ts
+- [x] T127 [US4] Create E2E test for impersonation in tests/e2e/impersonation.spec.ts
 
 **Checkpoint**: Super Admins can now manage organizations and provide customer support through impersonation. All administrative operations are audited.
 
@@ -288,17 +278,17 @@ Next.js 14 App Router structure:
 
 ### Vision Model Integration
 
-- [ ] T128 [P] [US5] Add vision model support to Diagnostician Agent in lib/agents/diagnostician.ts
-- [ ] T129 [US5] Implement photo analysis logic using Gemini 1.5 Pro vision capabilities
+- [x] T128 [P] [US5] Add vision model support to Diagnostician Agent in lib/agents/diagnostician.ts
+- [x] T129 [US5] Implement photo analysis logic using Gemini 1.5 Pro vision capabilities
 - [ ] T130 [US5] Implement component identification from photos
 - [ ] T131 [US5] Implement wear/damage detection from photos
 - [ ] T132 [US5] Implement wiring diagram cross-reference logic
 
 ### Photo Upload & Storage
 
-- [ ] T133 [P] [US5] Configure Supabase Storage bucket for photo uploads
+- [x] T133 [P] [US5] Configure Supabase Storage bucket for photo uploads
 - [ ] T134 [US5] Implement photo upload to Supabase Storage in PhotoUpload component
-- [ ] T135 [US5] Update chat API to handle photo URLs in messages
+- [x] T135 [US5] Update chat API to handle photo URLs in messages
 - [ ] T136 [US5] Store photo references in conversation_messages table
 
 ### UI Enhancements
@@ -337,10 +327,10 @@ Next.js 14 App Router structure:
 
 ### Documentation & Testing
 
-- [ ] T151 [P] Create seed data script in supabase/seed.sql with test organizations and users
+- [x] T151 [P] Create seed data script in supabase/seed.sql with test organizations and users
 - [ ] T152 [P] Document environment variables in README.md
 - [ ] T153 [P] Validate quickstart.md workflows work correctly
-- [ ] T154 [P] Create deployment guide in docs/deployment.md
+- [x] T154 [P] Create deployment guide in docs/deployment.md
 - [ ] T155 [P] Run full E2E test suite and fix any failures
 
 ### Security Hardening

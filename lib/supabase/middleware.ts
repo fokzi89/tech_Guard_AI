@@ -49,6 +49,11 @@ export async function updateSession(request: NextRequest) {
             url.pathname = '/auth/login'
             return NextResponse.redirect(url)
         }
+
+        // T124: Check for impersonation
+        if (user.user_metadata?.impersonated_by) {
+            supabaseResponse.headers.set('X-TechGuard-Impersonating', 'true');
+        }
     }
 
     // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
