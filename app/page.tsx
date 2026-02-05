@@ -41,12 +41,12 @@ export default function Home() {
 
           {/* CTA Button */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4 animate-slideUp" style={{ animationDelay: "0.2s" }}>
-            <Link href="/auth/login">
-              <Button size="lg" className="text-base px-8 py-6 h-auto group bg-primary hover:opacity-90 text-primary-foreground">
+            <Button asChild size="lg" className="text-base px-8 py-6 h-auto group bg-primary hover:opacity-90 text-primary-foreground">
+              <Link href="/auth/login">
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
 
           {/* Trust Indicators */}

@@ -21,7 +21,11 @@ export async function POST(req: Request) {
     const { userMessage, machineModel } = checkSchema.parse(json);
 
     // Get org_id
-    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('org_id')
+      .eq('id', user.id)
+      .single<{ org_id: string | null }>();
     const orgId = profile?.org_id;
 
     if (!orgId) {

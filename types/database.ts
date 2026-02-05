@@ -301,6 +301,7 @@ export interface Database {
         Functions: {
             check_safety_blacklist: {
                 Args: {
+                    query_embedding: number[]
                     user_input: string
                     machine_model: string
                 }
@@ -314,14 +315,17 @@ export interface Database {
             }
             search_manuals: {
                 Args: {
-                    query: string
-                    search_org_id: string
-                    limit_count?: number
+                    query_embedding: number[]
+                    search_org_id: string | null
+                    limit_count: number
                 }
                 Returns: {
                     manual_id: string
                     title: string
+                    machine_model: string
                     content: string
+                    safety_warnings: Json | null
+                    version: string | null
                     similarity: number
                 }[]
             }

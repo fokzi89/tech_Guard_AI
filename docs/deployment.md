@@ -1,69 +1,68 @@
-# TechGuard AI - Deployment Guide
+# Deployment Guide
+
+This guide describes how to deploy the TechGuard AI platform to production.
+The application is designed to be deployed on Vercel, but can be deployed to any platform supporting Next.js (AWS Amplify, Docker, etc.).
 
 ## Prerequisites
 
-- **Supabase Project**: You need a standard Supabase project (Free tier works).
-- **Vercel Account**: For frontend hosting.
-- **OpenAI API Key**: For embeddings.
-- **Google GenAI API Key**: For Gemini models.
+1.  **Vercel Account**: For hosting the frontend and serverless functions.
+2.  **Supabase Project**: Production database, authentication, and storage.
+3.  **Google AI Studio Account**: API key for Gemini Pro models.
 
 ## Environment Variables
 
-Configure the following in Vercel and Supabase:
+Ensure the following environment variables are set in your production environment (e.g., Vercel Project Settings):
 
 | Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Anon Key |
-| `SUPABASE_SERVICE_ROLE_KEY` | **SECRET** Service Role Key (Server-side only) |
-| `SUPABASE_JWT_SECRET` | **SECRET** JWT Secret for signing tokens |
-| `OPENAI_API_KEY` | For `text-embedding-3-small` |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | For Gemini models |
+| :--- | :--- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Production Supabase Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production Supabase Anon Key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production Service Role Key |
+| `SUPABASE_JWT_SECRET` | Production JWT Secret (from Supabase Auth settings) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini API Key |
+| `NEXT_PUBLIC_APP_URL` | The production URL (e.g., `https://techguard-ai.vercel.app`) |
 
-## Step 1: Database Setup
+## Vercel Deployment
 
-1. **Clone the repo locally.**
-2. **Execute Migrations**:
-   Run the following SQL files in the Supabase Dashboard > SQL Editor in order:
-   - `supabase/migrations/20260119000000_initial_schema.sql` (Creates tables)
-   - `supabase/migrations/20260126000000_storage_setup.sql` (Storage setup)
-   - Any other migration files in `supabase/migrations/` in date order.
+1.  **Import Project**: Connect your GitHub repository to Vercel.
+2.  **Configure Project**:
+    *   **Framework Preset**: Next.js
+    *   **Root Directory**: `./`
+3.  **Set Environment Variables**: Copy the values from your production Supabase project and AI providers.
+4.  **Deploy**: Click "Deploy". Vercel will build the application and deploy it to a global edge network.
 
-3. **Verify Extensions**:
-   Ensure `vector` extension is enabled. Migration should handle this.
+## Database Migrations
 
-4. **Seed Data (Optional)**:
-   You can run `npx tsx scripts/seed-data.ts` locally if connected to production, OR copy `supabase/seed.sql` content into the SQL editor.
-   *Note: `seed.sql` creates raw data but doesn't create Auth Users. Use the script for functional users.*
+**Important**: Do not run migrations automatically in the build step unless you have a robust CI/CD pipeline ensuring safety.
 
-## Step 2: Storage Setup
+Recommended approach for production:
 
-Ensure the following private buckets exist in Storage:
-- `manuals`
-- `safety-proofs`
+1.  **Local Changes**: Make schema changes locally and generate a migration file.
+    ```bash
+    supabase db diff -f my_new_migration
+    ```
+2.  **Push to Production**: Use the Supabase CLI to push migrations to the linked production project.
+    ```bash
+    supabase link --project-ref your-project-ref
+    supabase db push
+    ```
 
-*The migration script should attempt to create these.*
+## Storage Policies
 
-## Step 3: Frontend Deployment (Vercel)
+Ensure your production Supabase Storage buckets (`safety-photos`, `manuals`) exist and have the correct Row Level Security (RLS) policies applied. The application expects:
 
-1. Import the repository into Vercel.
-2. Select Next.js framework preset (default).
-3. Add the **Environment Variables** listed above.
-4. Deploy.
+*   **safety-photos**:
+    *   `INSERT`: Authenticated users can upload to their own folders `(bucket_id = 'safety-photos' AND auth.uid() = owner)`.
+    *   `SELECT`: Authenticated users can view photos (`bucket_id = 'safety-photos'`).
 
-## Step 4: Verification
+## CSP & Security Headers
 
-1. Go to the deployed URL.
-2. Log in with the Super Admin credentials (or sign up if you didn't seed).
-   - If seeded: `super@techguard.ai` / `password123`
-3. Verify Dashboard loads.
-4. Go to `/troubleshoot/new` and start a session.
+The application includes a `middleware.ts` that sets strict Content Security Policy (CSP) headers.
+If you use external scripts or analytics (e.g., Vercel Analytics, Google Analytics), you may need to update the `cspHeader` in `lib/supabase/middleware.ts` to allow those domains.
 
 ## Troubleshooting
 
-- **RLS Errors**: Check RLS policies in `supabase/migrations`.
-- **CORS Errors**: Ensure Supabase Project settings allow your Vercel domain.
-- **Vision/AI Errors**: Verify Google API keys and ensuring Gemini 1.5 Pro is enabled in your Google Cloud project.
+*   **Build Failures**: Check the build logs. Common issues include type errors or missing environment variables during build time (though Next.js usually inlines `NEXT_PUBLIC_` vars).
+*   **Auth Issues**: If users are logged out frequently or redirects fail, verify `NEXT_PUBLIC_APP_URL` matches your deployment domain.
+*   **Vision/AI Errors**: Verify the `GOOGLE_GENERATIVE_AI_API_KEY` is valid and has quota available.
 
----
-**TechGuard AI MVP - 2026**

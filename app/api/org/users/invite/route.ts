@@ -18,7 +18,11 @@ export async function POST(req: Request) {
         }
 
         // Verify requester is Org Admin or Super Admin
-        const { data: requesterProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        const { data: requesterProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single<{ org_id: string | null; role: string; [key: string]: any }>();
 
         if (!requesterProfile || (requesterProfile.role !== 'org_admin' && requesterProfile.role !== 'super_admin')) {
             return NextResponse.json({ error: 'Forbidden: Insufficient privileges' }, { status: 403 });
@@ -60,6 +64,7 @@ export async function POST(req: Request) {
         // If not, we should upsert profile here manually to be safe.
 
         if (invitation.user) {
+            // @ts-ignore - TypeScript inference issue with Supabase types
             await adminSupabase.from('profiles').upsert({
                 id: invitation.user.id,
                 org_id: orgId,

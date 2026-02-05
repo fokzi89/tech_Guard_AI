@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useChat } from '@ai-sdk/react';
-import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, AlertCircle, FileText, CheckCircle } from 'lucide-react';
 import { MessageList, type Message } from '@/app/components/chat/MessageList';
 import { MessageInput } from '@/app/components/chat/MessageInput';
 import { SafetyLockoutModal } from '@/app/components/chat/SafetyLockoutModal';
@@ -54,6 +53,11 @@ export default function TroubleshootingSessionPage() {
   );
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
 
+  // Report Generation State
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportGenerated, setReportGenerated] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
   // Fetch session on mount
   useEffect(() => {
     if (!sessionId) return;
@@ -81,7 +85,7 @@ export default function TroubleshootingSessionPage() {
             blockReason: msg.block_reason,
             metadata: msg.metadata,
           }));
-          // TODO: Set initial messages in useChat
+          setMessages(formattedMessages);
         }
       } catch (err) {
         console.error('Error fetching session:', err);
@@ -96,38 +100,101 @@ export default function TroubleshootingSessionPage() {
     fetchSession();
   }, [sessionId]);
 
-  // useChat hook from Vercel AI SDK
-  const {
-    messages,
-    input,
-    setInput,
-    handleSubmit,
-    isLoading,
-    error: chatError,
-    append,
-  } = useChat({
-    api: '/api/chat',
-    body: {
-      incidentId: sessionId,
-      machineModel: session?.machineModel || '',
-    },
-    onResponse: async (response) => {
-      // Check if Guardian blocked the request
-      if (response.headers.get('content-type')?.includes('application/json')) {
-        const data = await response.json();
+  // Manual chat state management
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatError, setChatError] = useState<Error | null>(null);
 
-        if (data.blocked) {
-          // Guardian blocked - open lockout modal
-          setGuardianBlock(data as GuardianBlockResponse);
-          setIsLockoutModalOpen(true);
-          return;
+  // Load initial messages
+  useEffect(() => {
+    if (session) {
+      // If we fetched messages with the session, set them here
+      // But currently session fetch doesn't return messages in the initial 'session' object if api structure is separate?
+      // Wait, the API GET /api/chat/session returns { session: ..., messages: ... }
+      // The current fetch logic in useEffect setsSession and ignores messages.
+      // Need to capture messages from the GET response.
+    }
+  }, [session]);
+
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim()) return;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: content,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+    setChatError(null);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          sessionId,
+          machineModel: session?.machineModel || '',
+        }),
+      });
+
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', responseText);
+        // Check if it looks like an HTML error page
+        if (responseText.includes('<!DOCTYPE html>')) {
+          throw new Error(`Authentication Error: Session may have expired. Please refresh the page or log in again.`);
         }
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
-    },
-    onError: (error) => {
+
+      if (response.status === 403 && data.blocked) {
+        setGuardianBlock(data as GuardianBlockResponse);
+        setIsLockoutModalOpen(true);
+
+        // Add system message for block
+        const blockMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'system',
+          content: data.message || 'Request blocked by safety guardian.',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, blockMessage]);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
+
+      // Success - add assistant response
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: data.response, // The API returns 'response' field
+        timestamp: new Date().toISOString(),
+        // Map metadata if needed (citations etc)
+        // The API returns metadata in various fields like citedManuals
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+
+    } catch (error) {
       console.error('Chat error:', error);
-    },
-  });
+      setChatError(error instanceof Error ? error : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePhotoUploadClick = () => {
     setShowPhotoUpload(true);
@@ -147,6 +214,39 @@ export default function TroubleshootingSessionPage() {
   const handleVerificationComplete = () => {
     setIsLockoutModalOpen(false);
     setGuardianBlock(null);
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setIsGeneratingReport(true);
+      setReportError(null);
+
+      const response = await fetch('/api/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incidentId: sessionId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to generate report');
+      }
+
+      const report = await response.json();
+      setReportGenerated(true);
+
+      // Show success for 3 seconds, then redirect to dashboard
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 3000);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setReportError(
+        error instanceof Error ? error.message : 'Failed to generate report'
+      );
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   // Loading state
@@ -204,13 +304,41 @@ export default function TroubleshootingSessionPage() {
                 </p>
               </div>
             </div>
-            <div className="text-right text-sm">
-              <p className="opacity-80">
-                {session.technician?.full_name || 'Unknown Technician'}
-              </p>
-              <p className="text-xs opacity-60">
-                Started {new Date(session.createdAt).toLocaleString()}
-              </p>
+            <div className="flex items-center space-x-4">
+              <div className="text-right text-sm">
+                <p className="opacity-80">
+                  {session.technician?.full_name || 'Unknown Technician'}
+                </p>
+                <p className="text-xs opacity-60">
+                  Started {new Date(session.createdAt).toLocaleString()}
+                </p>
+              </div>
+              {messages.length > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleGenerateReport}
+                  disabled={isGeneratingReport || reportGenerated}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isGeneratingReport ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : reportGenerated ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Report Generated
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generate Report
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -227,12 +355,7 @@ export default function TroubleshootingSessionPage() {
 
       {/* Message Input */}
       <MessageInput
-        onSendMessage={(message) => {
-          append({
-            role: 'user',
-            content: message,
-          });
-        }}
+        onSendMessage={(message) => handleSendMessage(message)}
         onPhotoUploadClick={handlePhotoUploadClick}
         disabled={isLockoutModalOpen || isLoading}
         isLoading={isLoading}
@@ -283,6 +406,40 @@ export default function TroubleshootingSessionPage() {
           <div className="flex items-center space-x-2">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
             <p className="text-sm text-foreground">{chatError.message}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Report Error */}
+      {reportError && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-destructive/10 border border-destructive/20 rounded-lg p-4 max-w-md z-50">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Report Generation Failed</p>
+              <p className="text-xs text-muted-foreground">{reportError}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReportError(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Report Success Notification */}
+      {reportGenerated && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-green-500/10 border border-green-500/20 rounded-lg p-4 max-w-md z-50">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Report Generated Successfully</p>
+              <p className="text-xs text-muted-foreground">Redirecting to dashboard...</p>
+            </div>
           </div>
         </div>
       )}

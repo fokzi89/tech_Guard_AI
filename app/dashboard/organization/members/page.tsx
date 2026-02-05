@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getOrganizationMembers } from '@/lib/actions/organization.actions'
 import { StatsCard } from '@/app/components/dashboard/StatsCard'
 import { Button } from '@/app/components/shared/Button'
+import { InviteTechnicianModal } from '@/app/components/organization/InviteTechnicianModal'
 import Link from 'next/link'
 
 interface Member {
@@ -18,40 +20,27 @@ export default function OrganizationMembersPage() {
     const [members, setMembers] = useState<Member[]>([])
     const [loading, setLoading] = useState(true)
     const [orgName, setOrgName] = useState('')
+    const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
     useEffect(() => {
         loadMembers()
     }, [])
 
     const loadMembers = async () => {
-        const supabase = createClient()
+        try {
+            const result = await getOrganizationMembers()
 
-        // Get current user's organization
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('org_id, organizations(name)')
-            .eq('id', user.id)
-            .single()
-
-        if (profile?.organizations) {
-            setOrgName((profile.organizations as any).name)
+            if (result.success) {
+                setMembers(result.members || [])
+                setOrgName(result.orgName || '')
+            } else {
+                console.error('Failed to load members:', result.error)
+            }
+        } catch (error) {
+            console.error('Error loading members:', error)
+        } finally {
+            setLoading(false)
         }
-
-        // Get all members in the organization
-        const { data: membersData } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, role, created_at')
-            .eq('org_id', profile?.org_id)
-            .order('created_at', { ascending: false })
-
-        if (membersData) {
-            setMembers(membersData)
-        }
-
-        setLoading(false)
     }
 
     const getRoleBadgeColor = (role: string) => {
@@ -89,9 +78,9 @@ export default function OrganizationMembersPage() {
                         <h1 className="text-3xl font-bold gradient-text">Team Members</h1>
                         <p className="gradient-text-muted mt-1">{orgName}</p>
                     </div>
-                    <Link href="/dashboard/organization">
-                        <Button variant="outline">Back to Organization</Button>
-                    </Link>
+                    <Button variant="outline" onClick={() => setInviteModalOpen(true)}>
+                        Invite Technician
+                    </Button>
                 </div>
 
                 {/* Stats */}
@@ -180,6 +169,12 @@ export default function OrganizationMembersPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Invite Technician Modal */}
+            <InviteTechnicianModal
+                open={inviteModalOpen}
+                onClose={() => setInviteModalOpen(false)}
+            />
         </div>
     )
 }

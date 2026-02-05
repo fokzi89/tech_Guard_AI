@@ -35,8 +35,8 @@ export async function searchManuals(
 
     try {
         // Build the query
-        let dbQuery = supabase
-            .rpc('search_manuals', {
+        let dbQuery = (supabase
+            .rpc as any)('search_manuals', {
                 query_embedding: queryEmbedding,
                 search_org_id: orgId || null,
                 limit_count: limit,
@@ -91,8 +91,8 @@ export async function searchSafetyBlacklist(
     const supabase = await createClient()
 
     try {
-        const { data, error } = await supabase
-            .rpc('check_safety_blacklist', {
+        const { data, error } = await (supabase
+            .rpc as any)('check_safety_blacklist', {
                 user_input: userInput,
                 machine_model: machineModel,
             })
@@ -103,8 +103,9 @@ export async function searchSafetyBlacklist(
         }
 
         // Check if we have a match above threshold
-        if (data && data.length > 0) {
-            const match = data[0]
+        const matchData = data as any;
+        if (matchData && matchData.length > 0) {
+            const match = matchData[0]
             if (match.similarity >= similarityThreshold) {
                 return {
                     matched: true,
@@ -140,14 +141,15 @@ export async function getManualById(manualId: string): Promise<SearchResult | nu
             return null
         }
 
+        const manualData = data as any;
         return {
-            id: data.id,
-            title: data.title,
-            machineModel: data.machine_model,
-            content: data.content,
+            id: manualData.id,
+            title: manualData.title,
+            machineModel: manualData.machine_model,
+            content: manualData.content,
             similarity: 1.0, // Exact match
-            safetyWarnings: data.safety_warnings,
-            version: data.version,
+            safetyWarnings: manualData.safety_warnings,
+            version: manualData.version,
         }
     } catch (error) {
         console.error('Error getting manual:', error)
@@ -174,7 +176,7 @@ export async function getOrganizationManuals(orgId: string): Promise<SearchResul
             return []
         }
 
-        return (data || []).map(manual => ({
+        return (data || []).map((manual: any) => ({
             id: manual.id,
             title: manual.title,
             machineModel: manual.machine_model,

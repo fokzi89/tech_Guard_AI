@@ -26,7 +26,11 @@ export async function GET(req: Request) {
         const params = searchSchema.parse({ query, limit });
 
         // Get org_id
-        const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', user.id)
+            .single<{ org_id: string | null }>();
         if (!profile?.org_id) {
             return NextResponse.json({ error: 'No Organization' }, { status: 403 });
         }

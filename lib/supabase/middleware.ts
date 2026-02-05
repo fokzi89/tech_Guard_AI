@@ -12,6 +12,24 @@ export async function updateSession(request: NextRequest) {
         request,
     })
 
+    // CSRF Protection: Check Origin for state-changing requests
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
+        const origin = request.headers.get('Origin');
+        const allowedOrigin = process.env.NEXT_PUBLIC_APP_URL; // e.g. http://localhost:3000
+
+        // Allow requests with no origin (e.g. server-side calls, tools) if safe, 
+        // OR strictly require origin from browsers.
+        // For browsers, Origin is always sent on CORS/POST.
+        if (origin && allowedOrigin && !origin.startsWith(allowedOrigin)) {
+            // In dev, allow localhost if APP_URL matches
+            if (process.env.NODE_ENV === 'development' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+                // allow
+            } else {
+                return new NextResponse('CSRF Forbidden', { status: 403 });
+            }
+        }
+    }
+
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

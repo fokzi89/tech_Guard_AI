@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StatsCard } from '@/app/components/dashboard/StatsCard'
 import { Button } from '@/app/components/shared/Button'
+import { InviteTechnicianModal } from '@/app/components/organization/InviteTechnicianModal'
 import Link from 'next/link'
 
 interface Organization {
@@ -18,6 +19,7 @@ export default function OrganizationPage() {
     const [organization, setOrganization] = useState<Organization | null>(null)
     const [memberCount, setMemberCount] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
     useEffect(() => {
         loadOrganization()
@@ -35,11 +37,13 @@ export default function OrganizationPage() {
             .eq('id', user.id)
             .single()
 
-        if (profile?.org_id) {
+        const profileData = profile as any;
+
+        if (profileData?.org_id) {
             const { data: orgData } = await supabase
                 .from('organizations')
                 .select('*')
-                .eq('id', profile.org_id)
+                .eq('id', profileData.org_id)
                 .single()
 
             if (orgData) {
@@ -49,7 +53,7 @@ export default function OrganizationPage() {
             const { count } = await supabase
                 .from('profiles')
                 .select('*', { count: 'exact', head: true })
-                .eq('org_id', profile.org_id)
+                .eq('org_id', profileData.org_id)
 
             setMemberCount(count || 0)
         }
@@ -134,21 +138,22 @@ export default function OrganizationPage() {
                 <div className="glass-panel rounded-lg p-6">
                     <h2 className="text-lg font-semibold gradient-text mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Link href="/dashboard/organization/members">
-                            <div className="glass-panel glass-panel-hover rounded-lg p-4 cursor-pointer">
-                                <div className="flex items-center">
-                                    <div className="flex-shrink-0">
-                                        <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                        </svg>
-                                    </div>
-                                    <div className="ml-4">
-                                        <h3 className="text-sm font-medium gradient-text">Manage Members</h3>
-                                        <p className="text-sm gradient-text-muted">View and manage team members</p>
-                                    </div>
+                        <div
+                            onClick={() => setInviteModalOpen(true)}
+                            className="glass-panel glass-panel-hover rounded-lg p-4 cursor-pointer"
+                        >
+                            <div className="flex items-center">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                    </svg>
+                                </div>
+                                <div className="ml-4">
+                                    <h3 className="text-sm font-medium gradient-text">Invite Technician</h3>
+                                    <p className="text-sm gradient-text-muted">Generate invite link for new members</p>
                                 </div>
                             </div>
-                        </Link>
+                        </div>
 
                         <Link href="/dashboard/organization/settings">
                             <div className="glass-panel glass-panel-hover rounded-lg p-4 cursor-pointer">
@@ -201,6 +206,12 @@ export default function OrganizationPage() {
                     </dl>
                 </div>
             </div>
+
+            {/* Invite Technician Modal */}
+            <InviteTechnicianModal
+                open={inviteModalOpen}
+                onClose={() => setInviteModalOpen(false)}
+            />
         </div>
     )
 }

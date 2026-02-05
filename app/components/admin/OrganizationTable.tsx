@@ -49,7 +49,7 @@ export function OrganizationTable({ data, onRefresh, onImpersonate }: Organizati
     };
 
     return (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -84,13 +84,14 @@ export function OrganizationTable({ data, onRefresh, onImpersonate }: Organizati
                                     }
                                 </Button>
                                 <Button
-                                    variant="secondary"
+                                    variant="default"
                                     size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
                                     onClick={() => onImpersonate(org.id)}
                                     title="Impersonate Org Admin"
                                 >
                                     <Shield className="h-4 w-4 mr-2" />
-                                    Impersonate
+                                    Impersonate Admin
                                 </Button>
                             </TableCell>
                         </TableRow>

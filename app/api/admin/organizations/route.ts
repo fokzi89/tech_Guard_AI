@@ -9,7 +9,11 @@ export async function GET(req: Request) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         // Verify Super Admin
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single<{ role: string }>();
         if (profile?.role !== 'super_admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
@@ -29,7 +33,11 @@ export async function GET(req: Request) {
 
         if (error) throw error;
 
-        return NextResponse.json(orgs);
+        return NextResponse.json(orgs, {
+            headers: {
+                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+            }
+        });
 
     } catch (error) {
         console.error('Error listing organizations:', error);

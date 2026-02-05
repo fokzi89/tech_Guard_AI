@@ -11,7 +11,11 @@ export async function GET(req: Request) {
         }
 
         // Get active user's org
-        const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('org_id')
+            .eq('id', user.id)
+            .single<{ org_id: string | null }>();
 
         if (!profile?.org_id) {
             return NextResponse.json({ error: 'User not associated with an organization' }, { status: 403 });

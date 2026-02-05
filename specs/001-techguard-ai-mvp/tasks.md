@@ -260,7 +260,7 @@ Next.js 14 App Router structure:
 - [x] T123 [US4] Implement impersonation token generation with JWT
 - [x] T124 [US4] Update authentication middleware to handle impersonation tokens
 - [x] T125 [US4] Add impersonation indicator to UI header when active
-- [ ] T126 [US4] Implement impersonation audit logging
+- [x] T126 [US4] Implement impersonation audit logging
 
 ### E2E Test for User Story 4
 
@@ -280,26 +280,26 @@ Next.js 14 App Router structure:
 
 - [x] T128 [P] [US5] Add vision model support to Diagnostician Agent in lib/agents/diagnostician.ts
 - [x] T129 [US5] Implement photo analysis logic using Gemini 1.5 Pro vision capabilities
-- [ ] T130 [US5] Implement component identification from photos
-- [ ] T131 [US5] Implement wear/damage detection from photos
-- [ ] T132 [US5] Implement wiring diagram cross-reference logic
+- [x] T130 [US5] Implement component identification from photos
+- [x] T131 [US5] Implement wear/damage detection from photos
+- [x] T132 [US5] Implement wiring diagram cross-reference logic
 
 ### Photo Upload & Storage
 
 - [x] T133 [P] [US5] Configure Supabase Storage bucket for photo uploads
-- [ ] T134 [US5] Implement photo upload to Supabase Storage in PhotoUpload component
+- [x] T134 [US5] Implement photo upload to Supabase Storage in PhotoUpload component
 - [x] T135 [US5] Update chat API to handle photo URLs in messages
-- [ ] T136 [US5] Store photo references in conversation_messages table
+- [x] T136 [US5] Store photo references in conversation_messages table
 
 ### UI Enhancements
 
-- [ ] T137 [US5] Enhance PhotoUpload component with drag-and-drop support
-- [ ] T138 [US5] Add photo preview in chat message list
-- [ ] T139 [US5] Add loading indicator during photo analysis
+- [x] T137 [US5] Enhance PhotoUpload component with drag-and-drop support
+- [x] T138 [US5] Add photo preview in chat message list
+- [x] T139 [US5] Add loading indicator during photo analysis
 
 ### E2E Test for User Story 5
 
-- [ ] T140 [US5] Create E2E test for photo-based diagnostics in tests/e2e/photo-diagnostics.spec.ts
+- [x] T140 [US5] Create E2E test for photo-based diagnostics in tests/e2e/photo-diagnostics.spec.ts
 
 **Checkpoint**: All five user stories are now complete. The platform supports full multimodal troubleshooting with photo analysis.
 
@@ -311,35 +311,36 @@ Next.js 14 App Router structure:
 
 ### Performance & Optimization
 
-- [ ] T141 [P] Implement API route caching where appropriate
-- [ ] T142 [P] Add Next.js Image optimization for uploaded photos
-- [ ] T143 [P] Implement dynamic imports for admin console (code splitting)
-- [ ] T144 [P] Optimize bundle size using Next.js built-in analyzer
-- [ ] T145 [P] Add loading states and Suspense boundaries to all pages
+- [x] T141 [P] Implement API route caching where appropriate
+- [x] T142 [P] Add Next.js Image optimization for uploaded photos
+- [x] T143 [P] Implement dynamic imports for admin console (code splitting)
+- [x] T144 [P] Optimize bundle size using Next.js built-in analyzer
+- [x] T145 [P] Add loading states and Suspense boundaries to all pages
 
 ### Accessibility
 
-- [ ] T146 [P] Add keyboard navigation to chat interface
-- [ ] T147 [P] Add ARIA labels to SafetyLockoutModal
-- [ ] T148 [P] Ensure all forms have proper labels and error associations
+- [x] T146 [P] Add semantic HTML and ARIA labels to chat interface
+- [x] T147 [P] Add ARIA labels to SafetyLockoutModal
+- [x] T148 [P] Ensure all forms have proper labels and error associations
 - [ ] T149 [P] Run axe-core accessibility tests
 - [ ] T150 [P] Test with screen readers (NVDA/JAWS)
 
 ### Documentation & Testing
 
 - [x] T151 [P] Create seed data script in supabase/seed.sql with test organizations and users
-- [ ] T152 [P] Document environment variables in README.md
-- [ ] T153 [P] Validate quickstart.md workflows work correctly
+- [x] T152 [P] Document environment variables in README.md
+- [x] T153 [P] Validate quickstart.md workflows work correctly
 - [x] T154 [P] Create deployment guide in docs/deployment.md
 - [ ] T155 [P] Run full E2E test suite and fix any failures
 
 ### Security Hardening
 
-- [ ] T156 [P] Implement rate limiting on all API routes
-- [ ] T157 [P] Add CSRF protection to form submissions
-- [ ] T158 [P] Validate file uploads for malicious content
-- [ ] T159 [P] Run security audit with npm audit
-- [ ] T160 [P] Review and test all RLS policies for bypass vulnerabilities
+- [x] T156 [P] Implement rate limiting on all API routes
+- [x] T157 [P] Add CSRF protection to form submissions
+- [x] T158 [P] Validate file uploads for malicious content
+- [x] T159 [P] Run security audit with npm audit
+- [x] T160 [P] Review and test all RLS policies for bypass vulnerabilities
+- [x] T161 [P] Ensure Storage bucket RLS policies separate organizational data
 
 ---
 

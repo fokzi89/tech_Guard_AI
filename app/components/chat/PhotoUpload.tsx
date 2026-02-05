@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { validateFile } from '@/lib/utils/file-validation';
 import { Button } from '@/app/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
@@ -77,15 +78,10 @@ export function PhotoUpload({
   };
 
   const processFile = (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file (JPEG, PNG, etc.)');
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
+    // Validate file
+    const validation = validateFile(file, ['image/'], 10 * 1024 * 1024);
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid file');
       return;
     }
 
@@ -116,7 +112,7 @@ export function PhotoUpload({
       // Step 1: Upload to Supabase Storage
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${incidentId}_${Date.now()}.${fileExt}`;
-      const filePath = `safety-verifications/${fileName}`;
+      const filePath = `${incidentId}/${Date.now()}_${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('safety-photos') // Bucket name
@@ -217,12 +213,14 @@ export function PhotoUpload({
 
       {/* Photo Preview */}
       {previewUrl && (
-        <div className="relative">
+        <div className="relative h-64 w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={previewUrl}
             alt="Selected photo"
-            className="w-full h-64 object-cover rounded-lg border border-border"
+            layout="fill"
+            objectFit="cover"
+            className="rounded-lg border border-border"
           />
           {uploadState === 'idle' && (
             <Button

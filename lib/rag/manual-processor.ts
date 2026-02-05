@@ -1,4 +1,3 @@
-const pdfParse = require('pdf-parse');
 import { generateEmbedding, prepareTextForEmbedding } from './embeddings'
 
 /**
@@ -41,23 +40,81 @@ export interface SafetyWarning {
  * Extract text from PDF buffer
  */
 /**
- * Extract text from PDF buffer
+ * Extract text from PDF buffer using pdf2json
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<{
     text: string
     totalPages: number
 }> {
-    try {
-        const data = await pdfParse(pdfBuffer);
+    return new Promise((resolve, reject) => {
+        try {
+            console.log('[PDF Extract] Buffer info:', {
+                isBuffer: Buffer.isBuffer(pdfBuffer),
+                length: pdfBuffer?.length,
+                type: typeof pdfBuffer,
+                constructor: pdfBuffer?.constructor?.name
+            });
 
-        return {
-            text: data.text,
-            totalPages: data.numpages,
+            // @ts-ignore - pdf2json is a CommonJS module
+            const PDFParser = require('pdf2json');
+            const pdfParser = new PDFParser();
+
+            let extractedText = '';
+            let pageCount = 0;
+
+            pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+                try {
+                    // pdf2json returns structured data
+                    pageCount = pdfData.Pages.length;
+
+                    // Extract text from all pages
+                    for (const page of pdfData.Pages) {
+                        for (const text of page.Texts || []) {
+                            for (const r of text.R || []) {
+                                if (r.T) {
+                                    try {
+                                        // Decode URI-encoded text
+                                        extractedText += decodeURIComponent(r.T) + ' ';
+                                    } catch (e) {
+                                        // If decoding fails, use the raw text
+                                        console.warn('[PDF Extract] Failed to decode text, using raw:', r.T);
+                                        extractedText += r.T + ' ';
+                                    }
+                                }
+                            }
+                        }
+                        extractedText += '\n';
+                    }
+
+                    console.log('[PDF Extract] Success! Pages:', pageCount, 'Text length:', extractedText.length);
+
+                    resolve({
+                        text: extractedText.trim(),
+                        totalPages: pageCount,
+                    });
+                } catch (err) {
+                    reject(err);
+                }
+            });
+
+            pdfParser.on('pdfParser_dataError', (errData: any) => {
+                console.error('[PDF Extract] Parser error:', errData);
+                reject(new Error(errData.parserError || 'PDF parsing failed'));
+            });
+
+            // Parse the buffer
+            pdfParser.parseBuffer(pdfBuffer);
+
+        } catch (error) {
+            console.error('[PDF Extract] Error extracting text from PDF:', error);
+            console.error('[PDF Extract] Error details:', {
+                name: error instanceof Error ? error.name : 'Unknown',
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
+            reject(error); // Pass through the original error
         }
-    } catch (error) {
-        console.error('Error extracting text from PDF:', error)
-        throw new Error('Failed to extract text from PDF')
-    }
+    });
 }
 
 /**
@@ -224,7 +281,12 @@ export async function processManual(
         }
     } catch (error) {
         console.error('Error processing manual:', error)
-        throw new Error('Failed to process manual')
+        console.error('Error details:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        })
+        throw error // Re-throw the original error instead of generic message
     }
 }
 

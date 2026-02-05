@@ -4,6 +4,18 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StatsCard } from '@/app/components/dashboard/StatsCard'
 import Link from 'next/link'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { MoreVertical, Shield, Power, PowerOff, Loader2, Building } from 'lucide-react'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
+import { Button } from "@/app/components/ui/button"
 
 interface Organization {
     id: string
@@ -17,6 +29,7 @@ export default function AdminOrganizationsPage() {
     const [organizations, setOrganizations] = useState<Organization[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const router = useRouter()
 
     useEffect(() => {
         loadOrganizations()
@@ -43,11 +56,85 @@ export default function AdminOrganizationsPage() {
 
         const { error } = await supabase
             .from('organizations')
+            // @ts-ignore - TypeScript inference issue with Supabase types
             .update({ status: newStatus })
             .eq('id', orgId)
 
         if (!error) {
             loadOrganizations()
+        }
+    }
+
+    const [impersonatingOrgId, setImpersonatingOrgId] = useState<string | null>(null)
+
+    const handleImpersonate = async (orgId: string) => {
+        setImpersonatingOrgId(orgId)
+        const supabase = createClient()
+        try {
+            console.log('Starting impersonation for org:', orgId)
+
+            // 1. Get Org Admin
+            const { data: users, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('org_id', orgId)
+                .eq('role', 'org_admin')
+                .limit(1)
+
+            if (error) {
+                console.error('Error fetching org admin:', error)
+                toast.error('Failed to find organization admin: ' + error.message)
+                return
+            }
+
+            if (!users || users.length === 0) {
+                console.warn('No org admin found for org:', orgId)
+                toast.error('No Org Admin found in this organization to impersonate.')
+                return
+            }
+
+            const targetUser = users[0] as any
+            console.log('Found target user:', targetUser.id)
+
+            // 2. Request Impersonation Token
+            const res = await fetch('/api/admin/impersonate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId: targetUser.id })
+            })
+
+            console.log('Impersonate API response status:', res.status)
+
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}))
+                throw new Error(errBody.error || 'Impersonation request failed')
+            }
+
+            const { token } = await res.json()
+            console.log('Received impersonation token')
+
+            // 3. Set Session
+            const { error: sessionError } = await supabase.auth.setSession({
+                access_token: token,
+                refresh_token: token
+            })
+
+            if (sessionError) {
+                console.error('Session error:', sessionError)
+                toast.error('Failed to establish session: ' + sessionError.message)
+                return
+            }
+
+            toast.success(`Impersonating ${targetUser.full_name || 'Admin'}`)
+
+            // Force reload to dashboard
+            window.location.href = '/dashboard'
+
+        } catch (error: any) {
+            console.error('Impersonation critical error:', error)
+            toast.error(error.message || 'An unexpected error occurred during impersonation')
+        } finally {
+            setImpersonatingOrgId(null)
         }
     }
 
@@ -140,65 +227,115 @@ export default function AdminOrganizationsPage() {
                 </div>
 
                 {/* Organizations Table */}
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden overflow-x-auto border dark:border-gray-700">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-900">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Organization
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Tier
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Created
                                 </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {filteredOrgs.map((org) => (
-                                <tr key={org.id} className="hover:bg-gray-50">
+                                <tr key={org.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                                            <div className="flex-shrink-0 h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-semibold shadow-sm">
                                                 {org.name.charAt(0)}
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">{org.name}</div>
-                                                <div className="text-sm text-gray-500">{org.id.slice(0, 8)}...</div>
+                                                <div className="text-sm font-medium text-gray-900 dark:text-white">{org.name}</div>
+                                                <div className="text-sm text-gray-500 dark:text-gray-400">{org.id.slice(0, 8)}...</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${org.status === 'active'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                                             }`}>
                                             {org.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 capitalize">
                                         {org.subscription_tier}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {new Date(org.created_at).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => toggleOrgStatus(org.id, org.status)}
-                                            className={`px-3 py-1 rounded-lg ${org.status === 'active'
-                                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                }`}
-                                        >
-                                            {org.status === 'active' ? 'Suspend' : 'Activate'}
-                                        </button>
+                                        <div className="flex items-center justify-end space-x-2">
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                className="hidden md:flex bg-blue-600 hover:bg-blue-700 text-white"
+                                                onClick={() => handleImpersonate(org.id)}
+                                                disabled={impersonatingOrgId === org.id}
+                                            >
+                                                {impersonatingOrgId === org.id ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Shield className="mr-2 h-4 w-4" />
+                                                )}
+                                                Impersonate
+                                            </Button>
+
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <span className="sr-only">Open menu</span>
+                                                        <MoreVertical className="h-4 w-4 dark:text-gray-400" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                    <Link href={`/dashboard/admin/organizations/${org.id}`}>
+                                                        <DropdownMenuItem>
+                                                            <Building className="mr-2 h-4 w-4" />
+                                                            View Details
+                                                        </DropdownMenuItem>
+                                                    </Link>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleImpersonate(org.id)}
+                                                        disabled={impersonatingOrgId === org.id}
+                                                        className="md:hidden"
+                                                    >
+                                                        <Shield className="mr-2 h-4 w-4" />
+                                                        Impersonate Admin
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        onClick={() => toggleOrgStatus(org.id, org.status)}
+                                                        className={org.status === 'active' ? 'text-red-600' : 'text-green-600'}
+                                                    >
+                                                        {org.status === 'active' ? (
+                                                            <>
+                                                                <PowerOff className="mr-2 h-4 w-4" />
+                                                                Suspend Organization
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Power className="mr-2 h-4 w-4" />
+                                                                Activate Organization
+                                                            </>
+                                                        )}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

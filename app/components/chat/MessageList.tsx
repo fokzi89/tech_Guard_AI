@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { AlertTriangle, User, Bot, Shield, Info } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export interface Message {
@@ -66,16 +67,21 @@ export function MessageList({ messages, isLoading, className }: MessageListProps
           </div>
           <div className="flex-1">
             <div className="bg-muted rounded-lg p-4">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-                <div
-                  className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: '0.1s' }}
-                />
-                <div
-                  className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: '0.2s' }}
-                />
+              <div className="flex flex-col space-y-2">
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                  <div
+                    className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                    style={{ animationDelay: '0.1s' }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-primary rounded-full animate-bounce"
+                    style={{ animationDelay: '0.2s' }}
+                  />
+                </div>
+                {messages.length > 0 && messages[messages.length - 1].role === 'user' && (messages[messages.length - 1].content.includes('![') || messages[messages.length - 1].content.includes('data:image')) && (
+                  <span className="text-xs text-muted-foreground animate-pulse">Analyzing visual data...</span>
+                )}
               </div>
             </div>
           </div>
@@ -222,12 +228,14 @@ function MessageContent({ content }: { content: string }) {
         if (imageMatch) {
           const [_, alt, src] = imageMatch;
           return (
-            <img
-              key={index}
-              src={src}
-              alt={alt}
-              className="max-w-full rounded-lg border border-border my-2 max-h-64 object-cover"
-            />
+            <div key={index} className="relative w-full h-auto min-h-[200px] max-h-64 my-2 rounded-lg overflow-hidden border border-border">
+              <Image
+                src={src}
+                alt={alt}
+                fill
+                className="object-cover"
+              />
+            </div>
           );
         }
 

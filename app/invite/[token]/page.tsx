@@ -26,7 +26,7 @@ export default function InviteRegisterPage() {
 
     const verifyToken = async () => {
         setVerifying(true)
-        const result = await authService.verifyInviteToken(token)
+        const result = await authService.verifyInviteToken(token) as any;
 
         if (result.success && result.invite) {
             setInviteData(result.invite)

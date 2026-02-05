@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { FileText, Trash2, Loader2, Download } from 'lucide-react';
+import { FileText, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Manual {
@@ -66,45 +65,43 @@ export function ManualsList({ refreshTrigger }: { refreshTrigger: number }) {
     }
 
     return (
-        <div className="space-y-4">
-            {manuals.map(manual => (
-                <Card key={manual.id} className="overflow-hidden">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-start space-x-4">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <FileText className="h-6 w-6 text-primary" />
+        <Card>
+            <CardContent className="p-4">
+                <div className="space-y-2">
+                    {manuals.map(manual => (
+                        <div
+                            key={manual.id}
+                            className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                            {/* PDF Icon */}
+                            <div className="flex-shrink-0 p-2 bg-red-500/10 rounded">
+                                <FileText className="h-5 w-5 text-red-500" />
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-lg">{manual.title}</h3>
-                                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                    <span>{manual.machine_model}</span>
-                                    <span>•</span>
-                                    <span>{new Date(manual.created_at).toLocaleDateString()}</span>
-                                    {manual.status !== 'active' && <Badge variant="secondary">{manual.status}</Badge>}
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center space-x-2">
-                            {manual.file_url && (
-                                <Button variant="ghost" size="icon" asChild>
-                                    <a href={manual.file_url} target="_blank" rel="noopener noreferrer">
-                                        <Download className="h-4 w-4" />
-                                    </a>
-                                </Button>
-                            )}
+                            {/* Title and Size */}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                    {manual.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {manual.machine_model}
+                                </p>
+                            </div>
+
+                            {/* Delete Icon */}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-destructive hover:bg-destructive/10"
+                                className="flex-shrink-0 text-destructive hover:bg-destructive/10 h-8 w-8"
                                 onClick={() => handleDelete(manual.id, manual.title)}
+                                title="Delete manual"
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
     );
 }

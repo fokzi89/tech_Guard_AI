@@ -4,7 +4,7 @@ test.describe('US4 - Super Admin Management', () => {
 
     test('Super Admin can impersonate an Org Admin', async ({ page }) => {
         // 1. Log in as Super Admin
-        await page.goto('/login');
+        await page.goto('/auth/login');
         await page.fill('input[name="email"]', 'super@techguard.ai');
         await page.fill('input[name="password"]', 'password123'); // Assuming test seed
         await page.click('button[type="submit"]');
@@ -34,11 +34,24 @@ test.describe('US4 - Super Admin Management', () => {
         // 6. Stop Impersonation
         await page.click('button[aria-label="Stop Impersonation"]');
         await expect(page).toHaveURL(/\/admin\/organizations/);
+
+        // 7. Verify audit log entry created
+        // Fetch logs via API (as we are still logged in as super admin in the browser context, 
+        // but for test robustness we can use a direct API call or check UI if it existed.
+        // Since we added an API route, let's verify via API request from the test context.)
+
+        const response = await page.request.get('/api/admin/audit-logs?limit=1');
+        expect(response.ok()).toBeTruthy();
+        const { logs } = await response.json();
+
+        expect(logs).toHaveLength(1);
+        expect(logs[0].action).toBe('IMPERSONATE');
+        // We can't easily know the exact targetUserId without more setup, but we know it happened just now.
     });
 
     test('Super Admin can suspend an organization', async ({ page }) => {
         // 1. Log in as Super Admin
-        await page.goto('/login');
+        await page.goto('/auth/login');
         await page.fill('input[name="email"]', 'super@techguard.ai');
         await page.fill('input[name="password"]', 'password123');
         await page.click('button[type="submit"]');

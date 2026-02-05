@@ -167,8 +167,10 @@ export function MessageInput({
         <div
           className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 flex items-start space-x-2"
           data-testid="safety-warning-banner"
+          role="alert"
+          aria-live="polite"
         >
-          <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex-1 text-sm">
             <p className="font-medium text-destructive">
               Potential Safety Concern
@@ -217,8 +219,9 @@ export function MessageInput({
             disabled={isDisabled}
             className="flex-shrink-0"
             data-testid="photo-upload-trigger"
+            aria-label="Upload photo"
           >
-            <ImageIcon className="h-5 w-5" />
+            <ImageIcon className="h-5 w-5" aria-hidden="true" />
           </Button>
 
           {/* Message Input Area */}
@@ -238,6 +241,7 @@ export function MessageInput({
                 isOverLimit && 'border-destructive focus:ring-destructive'
               )}
               data-testid="message-input"
+              aria-label="Message input"
             />
 
             {/* Bottom Row: Safety Indicator + Character Count */}
@@ -303,11 +307,12 @@ export function MessageInput({
             size="icon"
             className="flex-shrink-0"
             data-testid="send-message-button"
+            aria-label="Send message"
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-5 w-5" aria-hidden="true" />
             )}
           </Button>
         </div>

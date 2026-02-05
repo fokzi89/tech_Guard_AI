@@ -18,12 +18,13 @@ async function seed() {
             name: 'Test Org',
             subscription_tier: 'enterprise',
             status: 'active'
-        }, { onConflict: 'name' })
+        } as any, { onConflict: 'name' })
         .select()
         .single();
 
     if (orgError) throw orgError;
-    console.log('Organization created:', org.id);
+    const orgData = org as any;
+    console.log('Organization created:', orgData.id);
 
     // 2. Create User (Standard Tech)
     // We need to create in Auth first. 
@@ -35,7 +36,7 @@ async function seed() {
         email,
         password,
         email_confirm: true,
-        user_metadata: { org_id: org.id, full_name: 'Test Tech' }
+        user_metadata: { org_id: (org as any).id, full_name: 'Test Tech' }
     }).catch(async (e) => {
         // If user already exists, we might need to get ID
         console.log('User might already exist, attempting to fetch...');
@@ -55,7 +56,7 @@ async function seed() {
             await supabase.auth.admin.updateUserById(userId, {
                 password: password,
                 email_confirm: true,
-                user_metadata: { org_id: org.id, full_name: 'Test Tech' }
+                user_metadata: { org_id: (org as any).id, full_name: 'Test Tech' }
             });
             console.log('Updated existing user:', userId);
         }
@@ -67,11 +68,11 @@ async function seed() {
     // Ensure profile exists
     await supabase.from('profiles').upsert({
         id: userId,
-        org_id: org.id,
+        org_id: (org as any).id,
         role: 'technician',
         full_name: 'Test Tech',
         email
-    });
+    } as any);
 
     // 3. Create Safety Blacklist Rule
     try {
@@ -87,7 +88,7 @@ async function seed() {
                 required_action: 'disconnect_power',
                 similarity: 1.0, // base similarity for itself
                 embedding: embedding
-            }, { onConflict: 'rule_description' }); // constraint? or just insert
+            } as any, { onConflict: 'rule_description' }); // constraint? or just insert
 
         if (ruleError) console.warn('Rule insert error (maybe schema differs):', ruleError);
         else console.log('Safety rule seeded.');

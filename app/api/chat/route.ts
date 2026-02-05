@@ -4,6 +4,7 @@ import { diagnosticianAgent } from '@/lib/agents/diagnostician';
 import { searchManuals } from '@/lib/rag/search';
 import { generateEmbedding } from '@/lib/rag/embeddings';
 import { NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rate-limit'; // Import rate limiter
 import { z } from 'zod';
 // Removed CoreMessage import due to type issues
 // If error persists, remove it.
@@ -23,6 +24,12 @@ const chatRequestSchema = z.object({
 
 export const maxDuration = 30;
 
+// Initialize rate limiter: 20 requests per minute (very strict for LLM which is expensive)
+const limiter = rateLimit({
+  interval: 60 * 1000, // 60 seconds
+  uniqueTokenPerInterval: 500, // Max 500 users per interval
+});
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -30,6 +37,12 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+      await limiter.check(null, 20, user.id); // 20 requests per minute per user ID
+    } catch {
+      return NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
     }
 
     const json = await req.json();
@@ -42,14 +55,28 @@ export async function POST(req: Request) {
 
     const orgId = (user.user_metadata?.org_id as string) ?? null; // Assuming org_id is in metadata
     // Fallback: Fetch profile to get org_id if not in metadata
-    let activeOrgId = orgId;
+    let activeOrgId: string | null = orgId;
     if (!activeOrgId) {
-      const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
-      if (profile) activeOrgId = (profile as any).org_id;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single<{ org_id: string | null }>();
+      if (profile) activeOrgId = profile.org_id;
     }
 
     // Extract photo URL from content if not provided in top-level body
+    // Extract photo URL from content if not provided in top-level body
     let photoUrl = json.photoUrl;
+
+    // Check experimental_attachments (Vercel AI SDK standard)
+    if (!photoUrl && json.messages) {
+      const lastMsg = json.messages[json.messages.length - 1];
+      if (lastMsg.experimental_attachments && lastMsg.experimental_attachments.length > 0) {
+        photoUrl = lastMsg.experimental_attachments[0].url;
+      }
+    }
+
     if (!photoUrl && lastMessage.content) {
       // Look for standard markdown image regex: ![alt](url)
       const imageMatch = lastMessage.content.match(/!\[.*?\]\((.*?)\)/);
@@ -76,14 +103,15 @@ export async function POST(req: Request) {
       role: 'user',
       content: lastMessage.content,
       photo_url: (photoUrl && typeof photoUrl === 'string') ? photoUrl : null,
-      // metadata: guardianResult // Optional: store safety check result with user message?
+      metadata: {
+        raw_content: lastMessage.content,
+        // Store any auto-extracted text from image if we had OCR?
+      }
     } as any);
 
     if (guardianResult.decision === 'BLOCK') {
-      // Save System/Block Message ??
+      // Save System/Block Message
       // Spec says: "System MUST log all safety interventions" (FR-007)
-      // We can log as a message or just incident log.
-      // Let's log immediate block message.
       await supabase.from('conversation_messages').insert({
         incident_id: sessionId,
         role: 'system',
@@ -91,9 +119,14 @@ export async function POST(req: Request) {
         metadata: guardianResult as any
       } as any);
 
+      // Return format that matches frontend expectations
       return NextResponse.json({
-        error: 'Safety Block',
-        guardian: guardianResult
+        blocked: true,
+        decision: guardianResult.decision,
+        confidence: guardianResult.confidence,
+        matchedRule: guardianResult.matchedRule,
+        reasoning: guardianResult.reasoning,
+        message: 'Safety Block: This request has been blocked to protect your safety.'
       }, { status: 403 });
     }
 
@@ -120,7 +153,7 @@ export async function POST(req: Request) {
       conversationHistory: messages.slice(0, -1) as any[],
       orgId: activeOrgId,
       retrievedContext: manualChunks,
-      photoUrl: json.photoUrl // Pass the photo URL if present
+      photoUrl: photoUrl // Pass detected photo URL to agent
     });
 
     // Save Assistant Response
@@ -133,7 +166,10 @@ export async function POST(req: Request) {
         nextSteps: diagnosticResult.nextSteps,
         confidence: diagnosticResult.metadata.confidence,
         identifiedComponents: (diagnosticResult as any).identifiedComponents,
-        visualAnalysis: (diagnosticResult as any).visualAnalysis
+        visualAnalysis: (diagnosticResult as any).visualAnalysis,
+        damageAssessment: (diagnosticResult as any).damageAssessment,
+        wiringAnalysis: (diagnosticResult as any).wiringAnalysis,
+        photoPrompt: diagnosticResult.photoPrompt
       } as any
     } as any);
 

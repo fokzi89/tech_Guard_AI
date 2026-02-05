@@ -70,6 +70,7 @@ export function SafetyLockoutModal({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="safety-lockout-title"
+        aria-describedby="safety-lockout-desc"
       >
         {/* Header - Critical Warning */}
         <div className="bg-destructive/10 border-b border-destructive/20 p-6">
@@ -86,7 +87,7 @@ export function SafetyLockoutModal({
               >
                 CRITICAL SAFETY LOCKOUT
               </h2>
-              <p className="text-foreground">
+              <p className="text-foreground" id="safety-lockout-desc">
                 This request has been blocked to protect your safety.
               </p>
             </div>
@@ -112,11 +113,11 @@ export function SafetyLockoutModal({
                   className={cn(
                     'px-2 py-1 text-xs font-bold rounded',
                     matchedRule.severity === 'CRITICAL' &&
-                      'bg-red-500 text-white',
+                    'bg-red-500 text-white',
                     matchedRule.severity === 'HIGH' &&
-                      'bg-orange-500 text-white',
+                    'bg-orange-500 text-white',
                     matchedRule.severity === 'MEDIUM' &&
-                      'bg-yellow-500 text-black'
+                    'bg-yellow-500 text-black'
                   )}
                 >
                   {matchedRule.severity}

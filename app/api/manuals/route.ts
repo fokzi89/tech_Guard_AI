@@ -10,17 +10,29 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-    // List manuals logic
+    console.log('[Manuals List] Fetching manuals...');
     try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
+            console.error('[Manuals List] No user found');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
-        if (!profile?.org_id) return NextResponse.json({ error: 'No Org' }, { status: 403 });
+        console.log('[Manuals List] User ID:', user.id);
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('org_id, role')
+            .eq('id', user.id)
+            .single<{ org_id: string | null; role: string }>();
+        if (!profile?.org_id) {
+            console.error('[Manuals List] No org_id for user');
+            return NextResponse.json({ error: 'No Org' }, { status: 403 });
+        }
+
+        console.log('[Manuals List] Org ID:', profile.org_id, 'Role:', profile.role);
 
         // Select distinct manuals
         // Supabase doesn't easily support SELECT DISTINCT ON via helper unless we use rpc or raw query.
@@ -45,10 +57,18 @@ export async function GET(req: Request) {
 
         const { data, error } = await supabase
             .from('manuals')
-            .select('id, title, machine_model, created_at, status')
+            .select('id, title, machine_model, created_at, status, file_url')
             .eq('org_id', profile.org_id)
             .eq('status', 'active')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .returns<Array<{ id: string; title: string; machine_model: string; created_at: string; status: string; file_url: string | null }>>();
+
+        if (error) {
+            console.error('[Manuals List] Database error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        console.log('[Manuals List] Found', data?.length || 0, 'manual chunks');
 
         // Client side dedupe by title
         if (data) {
@@ -56,12 +76,16 @@ export async function GET(req: Request) {
             data.forEach(m => {
                 if (!unique.has(m.title)) unique.set(m.title, m);
             });
-            return NextResponse.json(Array.from(unique.values()));
+            const result = Array.from(unique.values());
+            console.log('[Manuals List] Returning', result.length, 'unique manuals');
+            return NextResponse.json(result);
         }
 
+        console.log('[Manuals List] No data found, returning empty array');
         return NextResponse.json([]);
 
-    } catch (error) {
-        return NextResponse.json({ error: 'Error' }, { status: 500 });
+    } catch (error: any) {
+        console.error('[Manuals List] Exception:', error);
+        return NextResponse.json({ error: error?.message || 'Error' }, { status: 500 });
     }
 }

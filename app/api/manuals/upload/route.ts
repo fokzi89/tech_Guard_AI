@@ -1,84 +1,168 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { processManual } from '@/lib/rag/manual-processor';
+import { processManual, extractSafetyRules } from '@/lib/rag/manual-processor';
 import { generateEmbeddingsBatch } from '@/lib/rag/embeddings';
+import { validateFile } from '@/lib/utils/file-validation';
 import { NextResponse } from 'next/server';
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const ALLOWED_TYPES = ['application/pdf'];
+
 export async function POST(req: Request) {
+    console.log('[Manual Upload] Starting upload process...');
     try {
         const supabase = await createClient();
+        console.log('[Manual Upload] Supabase client created');
+
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('[Manual Upload] User check:', user ? `User ID: ${user.id}` : 'No user');
 
         if (!user) {
+            console.error('[Manual Upload] Unauthorized - no user');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         // Verify role (Org Admin or Super Admin)
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single<{ org_id: string | null; role: string; [key: string]: any }>();
         if (!profile || (profile.role !== 'org_admin' && profile.role !== 'super_admin')) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return NextResponse.json({ error: 'Forbidden: Admin role required' }, { status: 403 });
         }
 
-        const orgId = profile.org_id;
-        if (!orgId) return NextResponse.json({ error: 'No Organization' }, { status: 400 });
+        // Determine org_id based on role
+        // Super admins can upload global manuals (org_id = null) if no org context
+        // Org admins can only upload for their organization
+        let orgId = profile.org_id;
+
+        if (profile.role === 'super_admin') {
+            // Super admins can upload global manuals by not having an org_id
+            // or by explicitly choosing to upload globally
+            const formData = await req.formData();
+            const isGlobal = formData.get('isGlobal') === 'true';
+
+            if (isGlobal) {
+                orgId = null;
+                console.log('[Manual Upload] Super admin uploading global manual');
+            } else if (!orgId) {
+                return NextResponse.json({
+                    error: 'Super admin must specify organization or mark as global'
+                }, { status: 400 });
+            }
+
+            // Get other form fields after consuming formData
+            const file = formData.get('file') as File;
+            const title = formData.get('title') as string;
+            const machineModel = formData.get('machineModel') as string;
+
+            return await handleUpload(file, title, machineModel, orgId, user.id);
+        }
+
+        if (!orgId) {
+            return NextResponse.json({ error: 'No Organization assigned' }, { status: 400 });
+        }
 
         const formData = await req.formData();
         const file = formData.get('file') as File;
         const title = formData.get('title') as string;
         const machineModel = formData.get('machineModel') as string;
 
+        return await handleUpload(file, title, machineModel, orgId, user.id);
+
+    } catch (error: any) {
+        console.error('[Manual Upload] ERROR:', error);
+        console.error('[Manual Upload] Error stack:', error?.stack);
+        return NextResponse.json({
+            error: error.message || 'Internal Server Error',
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
+    }
+}
+
+/**
+ * Main upload handler function
+ */
+async function handleUpload(
+    file: File,
+    title: string,
+    machineModel: string,
+    orgId: string | null,
+    userId: string
+): Promise<NextResponse> {
+    try {
+        // 1. Validate inputs
         if (!file || !title || !machineModel) {
-            return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+            return NextResponse.json({ error: 'Missing required fields: file, title, or machineModel' }, { status: 400 });
         }
 
-        // 1. Upload to Supabase Storage (Manuals Bucket)
-        // We use Admin Client to ensure we can upload (buckets usually need policies, but service role bypasses)
-        const adminSupabase = createAdminClient();
-        const fileName = `${orgId}/${Date.now()}-${file.name}`;
+        // 2. Validate file
+        const validation = validateFile(file, ALLOWED_TYPES, MAX_FILE_SIZE);
+        if (!validation.valid) {
+            console.error('[Manual Upload] File validation failed:', validation.error);
+            return NextResponse.json({ error: validation.error }, { status: 400 });
+        }
 
-        // We need ArrayBuffer/Buffer
+        console.log('[Manual Upload] File validated successfully');
+
+        // 3. Upload to Supabase Storage (Manuals Bucket)
+        const adminSupabase = createAdminClient();
+        const storagePath = orgId ? `${orgId}/${Date.now()}-${file.name}` : `global/${Date.now()}-${file.name}`;
+
+        // Convert file to buffer
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
+        console.log('[Manual Upload] File info:', {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            bufferLength: buffer.length,
+            orgId: orgId || 'global'
+        });
+
+        // Upload to storage
         const { data: uploadData, error: uploadError } = await adminSupabase
             .storage
             .from('manuals')
-            .upload(fileName, buffer, {
+            .upload(storagePath, buffer, {
                 contentType: 'application/pdf',
                 upsert: true
             });
 
         let fileUrl = '';
         if (uploadError) {
-            console.warn('Storage upload failed (bucket missing?):', uploadError.message);
-            // We continue processing even if storage fails, for MVP dev
+            console.warn('[Manual Upload] Storage upload failed:', uploadError.message);
+            // Continue processing even if storage fails (bucket might not exist in dev)
         } else {
-            const { data: { publicUrl } } = adminSupabase.storage.from('manuals').getPublicUrl(fileName);
+            const { data: { publicUrl } } = adminSupabase.storage.from('manuals').getPublicUrl(storagePath);
             fileUrl = publicUrl;
+            console.log('[Manual Upload] File uploaded to storage:', fileUrl);
         }
 
-        // 2. Process Manual (Extract Text, Chunk)
-        console.log('Processing manual PDF...');
+        // 4. Process Manual (Extract Text, Chunk, Generate Embeddings)
+        console.log('[Manual Upload] Processing manual PDF...');
         const processed = await processManual(buffer, title, machineModel);
+        console.log('[Manual Upload] Manual processed:', {
+            chunks: processed.chunks.length,
+            safetyWarnings: processed.safetyWarnings.length,
+            totalPages: processed.metadata.totalPages
+        });
 
-        // 3. Generate Embeddings (Batch)
-        console.log(`Generating embeddings for ${processed.chunks.length} chunks...`);
-        // Extract just text content from chunks for embedding
-        const chunkTexts = processed.chunks.map(c => c.content);
-        // Note: processManual already generates embeddings?
-        // Let's check processManual in lib/rag/manual-processor.ts
-        // It calls generateEmbedding loop.
-        // So processed.chunks already has embeddings!
-        // No need to call generateEmbeddingsBatch here unless processManual didn't do it.
-        // Looking at file content of manual-processor.ts:
-        // "for (let i = 0; i < textChunks.length; i++) ... const embedding = await generateEmbedding(preparedText)"
-        // So it does it sequentially. That might be slow but it works.
+        // 5. Store Chunks in Database
+        console.log('[Manual Upload] Inserting chunks into database...');
 
-        // 4. Store Chunks in Database
-        console.log('Inserting chunks into database...');
-        // We need to shape the rows for 'manuals' table.
-        // 'manuals' table structure: id, org_id, title, machine_model, content, embedding, safety_warnings, file_url, status, version
-        // One row per chunk.
+        // Store all safety warnings as JSONB (will be same for all chunks)
+        const safetyWarningsJson = processed.safetyWarnings.reduce((acc, warning, index) => {
+            acc[`warning_${index}`] = {
+                type: warning.type,
+                description: warning.description,
+                context: warning.context,
+                pageNumber: warning.pageNumber
+            };
+            return acc;
+        }, {} as Record<string, any>);
 
         const rows = processed.chunks.map(chunk => ({
             org_id: orgId,
@@ -86,54 +170,117 @@ export async function POST(req: Request) {
             machine_model: machineModel,
             content: chunk.content,
             embedding: chunk.embedding,
-            safety_warnings: {}, // We could put warnings here if specific to chunk?
-            // Or we store all warnings in every chunk? 
-            // Schema says safety_warnings is jsonb.
-            // Maybe store extracted warnings in the first chunk or all?
-            // Let's store empty for chunks, but maybe we should have a separate 'manual_metadata' table.
-            // Given the schema, we just duplicate metadata.
+            safety_warnings: safetyWarningsJson,
             file_url: fileUrl,
             status: 'active',
             version: processed.metadata.version
         }));
 
-        // Batch insert
-        const { error: insertError } = await adminSupabase
+        // Log what we're about to insert
+        console.log('[Manual Upload] Attempting to insert rows:', {
+            count: rows.length,
+            firstRow: rows[0] ? {
+                org_id: rows[0].org_id,
+                title: rows[0].title,
+                machine_model: rows[0].machine_model,
+                contentLength: rows[0].content?.length,
+                embeddingLength: rows[0].embedding?.length,
+                safetyWarnings: Object.keys(rows[0].safety_warnings || {}).length,
+                file_url: rows[0].file_url,
+                status: rows[0].status,
+                version: rows[0].version
+            } : null
+        });
+
+        // Batch insert manual chunks
+        const { data: insertedManuals, error: insertError } = (await adminSupabase
             .from('manuals')
-            .insert(rows);
+            // @ts-ignore - TypeScript inference issue with Supabase types
+            .insert(rows)
+            .select('id')) as { data: Array<{ id: string }> | null; error: any };
+
+        console.log('[Manual Upload] Insert result:', {
+            success: !insertError,
+            dataCount: insertedManuals?.length,
+            error: insertError
+        });
 
         if (insertError) {
-            console.error('Database insert error:', insertError);
-            return NextResponse.json({ error: 'Failed to save manual' }, { status: 500 });
+            console.error('[Manual Upload] Database insert error:', insertError);
+            console.error('[Manual Upload] Error details:', JSON.stringify(insertError, null, 2));
+            return NextResponse.json({
+                error: 'Failed to save manual to database',
+                details: insertError.message,
+                code: insertError.code,
+                hint: insertError.hint
+            }, { status: 500 });
         }
 
-        // 5. Insert Extracted Safety Rules into Blacklist?
-        // T036/T037 says "Extract safety warning...".
-        // T092 says "Store manual chunks".
-        // Does it imply automatic blacklist update?
-        // "T049 [US1] Implement safety blacklist vector search..." relies on data in safety_blacklist.
-        // It makes sense to auto-populate it.
-        // Let's import extractSafetyRules from manual-processor and insert them.
+        console.log('[Manual Upload] Inserted', insertedManuals?.length, 'manual chunks');
 
-        /* 
-        const { extractSafetyRules } = require('@/lib/rag/manual-processor'); // or import
-        // Need to verify if I can import named export if I used require/pdf-parse previously.
-        // It should be fine as it is a separate function.
-        */
+        // Verify the insert by querying the database
+        const { data: verifyData, error: verifyError } = await adminSupabase
+            .from('manuals')
+            .select('id')
+            .eq('title', title)
+            .eq('machine_model', machineModel);
 
-        // Actually `processManual` returns `safetyWarnings`.
-        // We can iterate and insert.
-        // But let's stick to the plan strictly. T092 "Store manual chunks".
-        // If I add safety rules, that's a bonus/integration.
-        // I'll do it if it's easy.
-        // `manual-processor.ts` has `extractSafetyRules`.
+        console.log('[Manual Upload] Verification query:', {
+            found: verifyData?.length || 0,
+            error: verifyError
+        });
 
-        // TODO: Insert safety rules
+        // 6. Insert Extracted Safety Rules into Blacklist
+        if (processed.safetyWarnings.length > 0) {
+            console.log('[Manual Upload] Extracting safety rules for blacklist...');
 
-        return NextResponse.json({ success: true, chunks: rows.length });
+            const safetyRules = await extractSafetyRules(
+                processed.safetyWarnings,
+                machineModel
+            );
+
+            if (safetyRules.length > 0) {
+                // Use the first manual chunk's ID as the reference
+                const manualId = insertedManuals?.[0]?.id;
+
+                const blacklistRows = safetyRules.map(rule => ({
+                    manual_id: manualId,
+                    machine_model: machineModel,
+                    rule_description: rule.ruleDescription,
+                    embedding: rule.embedding,
+                    severity: rule.severity
+                }));
+
+                const { error: blacklistError } = await adminSupabase
+                    .from('safety_blacklist')
+                    // @ts-ignore - TypeScript inference issue with Supabase types
+                    .insert(blacklistRows);
+
+                if (blacklistError) {
+                    console.error('[Manual Upload] Failed to insert safety rules:', blacklistError);
+                    // Don't fail the whole upload if blacklist insertion fails
+                } else {
+                    console.log('[Manual Upload] Inserted', safetyRules.length, 'safety rules into blacklist');
+                }
+            }
+        }
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                chunks: rows.length,
+                safetyWarnings: processed.safetyWarnings.length,
+                safetyRules: processed.safetyWarnings.length,
+                totalPages: processed.metadata.totalPages,
+                fileUrl: fileUrl
+            }
+        });
 
     } catch (error: any) {
-        console.error('Error in manual upload:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+        console.error('[Manual Upload Handler] ERROR:', error);
+        return NextResponse.json({
+            error: error.message || 'Internal Server Error',
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }

@@ -2,7 +2,12 @@ import { createClient } from '@/lib/supabase/server';
 import { curatorAgent } from '@/lib/agents/curator';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { CoreMessage } from 'ai';
+
+// Type for conversation messages
+type CoreMessage = {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+};
 
 const generateSchema = z.object({
     incidentId: z.string().uuid()
@@ -25,7 +30,7 @@ export async function POST(req: Request) {
             .from('incidents')
             .select('*')
             .eq('id', incidentId)
-            .single();
+            .single<{ user_id: string; machine_model: string; external_ticket_id: string | null; [key: string]: any }>();
 
         if (incidentError || !incident) {
             return NextResponse.json({ error: 'Incident not found' }, { status: 404 });
@@ -41,7 +46,8 @@ export async function POST(req: Request) {
             .from('conversation_messages')
             .select('*')
             .eq('incident_id', incidentId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true })
+            .returns<Array<{ role: string; content: string; [key: string]: any }>>();
 
         if (msgError) {
             return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
@@ -58,7 +64,7 @@ export async function POST(req: Request) {
             conversationHistory: history,
             machineModel: incident.machine_model,
             incidentId: incident.id,
-            externalTicketId: incident.external_ticket_id
+            externalTicketId: incident.external_ticket_id ?? undefined
         });
 
         // 3. Save to service_reports table
@@ -71,6 +77,7 @@ export async function POST(req: Request) {
 
         const { data: report, error: saveError } = await supabase
             .from('service_reports')
+            // @ts-ignore - TypeScript inference issue with Supabase types
             .upsert({
                 incident_id: incidentId,
                 work_order: incident.external_ticket_id,

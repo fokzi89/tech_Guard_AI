@@ -20,7 +20,11 @@ export async function POST(req: Request) {
     const { machineModel, workOrderId } = createSessionSchema.parse(json);
 
     // Get org_id
-    const { data: profile } = await supabase.from('profiles').select('org_id').eq('id', user.id).single();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('org_id')
+      .eq('id', user.id)
+      .single<{ org_id: string | null }>();
     const orgId = profile?.org_id; // OR user.user_metadata.org_id
 
     if (!orgId) {
@@ -75,28 +79,38 @@ export async function GET(req: Request) {
     console.log('[API] Fetching session for user:', user.id, 'Incident:', incidentId);
 
     // Fetch session details
-    const { data: sessionData, error: sessionError } = await supabase
+    const { data: sessionDataRaw, error: sessionError } = await supabase
       .from('incidents')
-      .select(`
-        *,
-        technician:profiles!user_id (
-          full_name
-        )
-      `)
+      .select('*')
       .eq('id', incidentId)
-      .single() as any;
+      .single();
 
     if (sessionError) {
       console.error('[API] Error fetching session from DB:', sessionError);
       return NextResponse.json({ error: 'Session not found', details: sessionError }, { status: 404 });
     }
 
+    const sessionData = sessionDataRaw as any;
+
     if (!sessionData) {
       console.error('[API] Session data is null');
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    // Fetch technician details separately since there's no direct FK to profiles
+    const { data: technicianData } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', sessionData.user_id)
+      .single();
+
     console.log('[API] Session found:', sessionData.id);
+
+    // Combine data
+    const sessionWithTechnician = {
+      ...sessionData,
+      technician: technicianData
+    };
 
     // Fetch messages
     const { data: messages, error: messagesError } = await supabase
@@ -115,7 +129,7 @@ export async function GET(req: Request) {
       machineModel: sessionData.machine_model,
       workOrderId: sessionData.external_ticket_id,
       status: sessionData.status,
-      technician: sessionData.technician,
+      technician: sessionWithTechnician.technician,
       createdAt: sessionData.created_at,
       updatedAt: sessionData.updated_at
     };

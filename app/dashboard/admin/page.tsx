@@ -2,8 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { StatsCard } from '@/app/components/dashboard/StatsCard'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+const StatsCard = dynamic(() => import('@/app/components/dashboard/StatsCard').then(mod => mod.StatsCard), {
+    loading: () => <div className="h-32 bg-gray-100 animate-pulse rounded-lg"></div>,
+    ssr: false
+})
 
 export default function AdminDashboardPage() {
     const [stats, setStats] = useState({
@@ -32,14 +37,14 @@ export default function AdminDashboardPage() {
             .select('*', { count: 'exact', head: true })
 
         const now = new Date()
-        const newOrgs = orgs?.filter(org => {
+        const newOrgs = (orgs as any[])?.filter(org => {
             const created = new Date(org.created_at)
             return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
         }) || []
 
         setStats({
             totalOrgs: orgs?.length || 0,
-            activeOrgs: orgs?.filter(o => o.status === 'active').length || 0,
+            activeOrgs: (orgs as any[])?.filter(o => o.status === 'active').length || 0,
             totalUsers: userCount || 0,
             newOrgsThisMonth: newOrgs.length,
         })

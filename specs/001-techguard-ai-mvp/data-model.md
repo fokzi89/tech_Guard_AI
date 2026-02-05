@@ -395,7 +395,44 @@ USING (
 );
 ```
 
----
+396: ```
+397: 
+398: ---
+399: 
+400: ### audit_logs
+401: 
+402: Audit trail for security-critical actions (e.g., impersonation).
+403: 
+404: **Table**: `public.audit_logs`
+405: 
+406: | Column           | Type        | Constraints                              | Description                                    |
+407: |------------------|-------------|------------------------------------------|------------------------------------------------|
+408: | id               | uuid        | PRIMARY KEY, DEFAULT gen_random_uuid()   | Unique log identifier                          |
+409: | actor_id         | uuid        | REFERENCES profiles(id) NOT NULL         | User performing the action                     |
+410: | action           | text        | NOT NULL                                 | Action type (e.g., 'IMPERSONATE')              |
+411: | target_resource  | text        |                                          | ID of resource/user being acted upon           |
+412: | details          | jsonb       | DEFAULT '{}'                             | Additional details (metadata)                  |
+413: | ip_address       | text        |                                          | IP address of actor                            |
+414: | user_agent       | text        |                                          | User agent string                              |
+415: | created_at       | timestamptz | DEFAULT now()                            | Timestamp of action                            |
+416: 
+417: **RLS Policies**:
+418: ```sql
+419: -- Super Admins can view all audit logs
+420: CREATE POLICY "Super Admins can view all audit logs"
+421: ON audit_logs FOR SELECT
+422: TO authenticated
+423: USING (
+424:   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'super_admin')
+425: );
+426: 
+427: -- Service role can insert logs
+428: CREATE POLICY "Service role can insert audit logs"
+429: ON audit_logs FOR INSERT
+430: WITH CHECK (true);
+431: ```
+432: 
+433: ---
 
 ## Database Functions
 
@@ -633,6 +670,5 @@ ALTER TABLE service_reports ENABLE ROW LEVEL SECURITY;
 ## Future Enhancements (Post-MVP)
 
 1. **manual_versions**: Track full version history for manuals
-2. **audit_log**: Comprehensive audit trail for compliance
 3. **organization_settings**: Per-org configuration (branding, preferences)
 4. **user_sessions**: Track user activity for analytics

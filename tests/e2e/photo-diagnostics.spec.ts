@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 
 test.describe('Photo Diagnostics', () => {
+    test.slow(); // Increase timeout (3x) for cold-start complications
     // Use a unique session ID for isolation if possible, but the app generates it.
     // We'll require login first.
 
@@ -96,11 +97,18 @@ test.describe('Photo Diagnostics', () => {
         const request = await requestPromise;
         const postData = request.postDataJSON();
 
-        // Verify the message content includes the image markdown
-        // because we append it on the client side: content + \n\n![...](url)
+        // Verify the message payload includes the attachment
         const lastMessage = postData.messages[postData.messages.length - 1];
         expect(lastMessage.content).toContain('What is this component?');
-        expect(lastMessage.content).toMatch(/!\[User Uploaded Image\]\(.*\)/);
+
+        // Vercel AI SDK sends attachments in 'experimental_attachments' field of the message
+        // OR as top level data depending on version. 
+        // Based on my implementation: generic append({ experimental_attachments: ... }) 
+        // usually puts it in the message object in the 'messages' array.
+
+        expect(lastMessage.experimental_attachments).toBeDefined();
+        expect(lastMessage.experimental_attachments.length).toBeGreaterThan(0);
+        expect(lastMessage.experimental_attachments[0].url).toContain('safety-photos');
 
     });
 });

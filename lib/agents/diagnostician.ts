@@ -1,6 +1,7 @@
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
+import { createOpenRouterClient, getOpenRouterModel, shouldUseOpenRouter } from '@/lib/ai/openrouter-config';
 
 /**
  * Common interfaces
@@ -59,8 +60,20 @@ const diagnosticianSchema = z.object({
     responseType: z.enum(['diagnostic', 'explanation', 'procedure']),
     confidence: z.number().min(0).max(1).describe('Confidence score 0.0-1.0'),
   }),
-  identifiedComponents: z.array(z.string()).optional().describe('List of components identified in variables if a photo was provided.'),
-  visualAnalysis: z.string().optional().describe('Description of visual findings like damage/wear if a photo was provided.'),
+  identifiedComponents: z.array(z.string()).optional().describe('List of components identified in the photo (e.g., "Terminal R24", "Capacitor C12").'),
+  visualAnalysis: z.string().optional().describe('Detailed description of visual findings like damage/wear/corrosion if a photo was provided.'),
+  componentStatus: z.enum(['normal', 'damaged', 'disconnected', 'unknown']).optional().describe('Guessed status of the main component in focus.'),
+  damageAssessment: z.object({
+    hasDamage: z.boolean().describe('True if visible damage (burns, cracks, corrosion) is detected.'),
+    damageType: z.enum(['none', 'thermal', 'physical', 'corrosion', 'alignment', 'other']).describe('Type of primary damage detected.'),
+    severity: z.enum(['none', 'minor', 'moderate', 'critical']).describe('Severity of the detected damage.'),
+    recommendation: z.string().optional().describe('Specific recommendation based on the damage (e.g., "Replace immediately", "Clean contacts").')
+  }).optional().describe('Structured assessment of wear or damage found in the photo.'),
+  wiringAnalysis: z.object({
+    matchesDiagram: z.boolean().describe('True if wiring appears consistent with standard configurations/manual context.'),
+    discrepancyDescription: z.string().optional().describe('Description of any wiring discrepancies (e.g. "Blue wire connected to ground instead of live").'),
+    connectionStatus: z.enum(['secure', 'loose', 'disconnected', 'uncertain']).describe('General assessment of visible connection quality.')
+  }).optional().describe('Analysis of wiring configuration vs expected standards.')
 });
 
 /**
@@ -93,7 +106,12 @@ Guidelines:
 7. Use the exact terminology from the machine manual.
 
 8. If a photo is provided, ANALYZE it carefully. Identify components, visible damage, or wiring states. Compare with known manual diagrams if possible.
-9. If the user asks "What is this component?", identify it from the photo.
+9. If the user asks "What is this component?", identify it from the photo. Provide its likely name, function, and status.
+10. If identifying a component, cross-reference its appearance with any descriptions in the provided manual context.
+11. ACTIVELY SCAN FOR DAMAGE: Look for signs of thermal damage (charring, melting), physical damage (cracks, bends), corrosion (rust, oxidation), or poor connections (loose wires, exposed copper).
+12. If damage is found, categorize its severity and type in the damageAssessment field. Be conservative with "Critical" assessments unless safety is at risk.
+13. CHECK WIRING: If wires are visible, check colors, routing, and connection points against any descriptions in the "Available Context from Manuals".
+14. If a discrepancy occurs (e.g. "Manual says Red wire to Terminal 1, photo shows Blue"), flag this in wiringAnalysis.discrepancyDescription.
 
 Safety Note: The user's request has been cleared by the Guardian Agent, but remain vigilant.
 
@@ -101,11 +119,26 @@ Available Context from Manuals:
 ${contextString || 'No specific manual sections found.'}
 
 Analyze the user's question (and photo if provided) and the provided context to answer.
+If identifying components, populate the identifiedComponents and visualAnalysis fields in detail.
 `;
 
   try {
+    // Determine which model to use
+    const useOpenRouter = shouldUseOpenRouter();
+    let model;
+
+    if (useOpenRouter) {
+      const openrouter = createOpenRouterClient();
+      const modelName = photoUrl ? getOpenRouterModel('vision') : getOpenRouterModel('chat');
+      model = openrouter(modelName);
+      console.log(`[Diagnostician] Using OpenRouter model: ${modelName}`);
+    } else {
+      model = google('gemini-1.5-pro-latest');
+      console.log('[Diagnostician] Using Google Gemini model');
+    }
+
     const result = await generateObject({
-      model: google('gemini-1.5-pro-latest'),
+      model,
       schema: diagnosticianSchema,
       system: systemPrompt,
       messages: [

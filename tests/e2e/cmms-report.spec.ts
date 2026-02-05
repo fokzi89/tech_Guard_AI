@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('US3 - CMMS Reports', () => {
     test('Technician can generate a CMMS report from a session', async ({ page }) => {
         // 1. Log in
-        await page.goto('/login');
+        await page.goto('/auth/login');
         await page.fill('input[name="email"]', 'tech-org-a@example.com');
         await page.fill('input[name="password"]', 'password123');
         await page.click('button[type="submit"]');

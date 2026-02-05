@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { CoreMessage } from 'ai';
 
 /**
  * Input for the Curator Agent
  */
 export interface CuratorInput {
-    conversationHistory: CoreMessage[];
+    conversationHistory: any[];
     machineModel: string;
     incidentId: string;
     externalTicketId?: string;

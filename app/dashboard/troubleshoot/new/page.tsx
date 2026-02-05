@@ -53,7 +53,7 @@ export default function NewTroubleshootingSessionPage() {
     const result = newSessionSchema.safeParse(formData);
     if (!result.success) {
       const errors: Partial<Record<keyof NewSessionForm, string>> = {};
-      result.error.errors.forEach((err) => {
+      result.error.issues.forEach((err) => {
         const field = err.path[0] as keyof NewSessionForm;
         errors[field] = err.message;
       });
@@ -136,10 +136,18 @@ export default function NewTroubleshootingSessionPage() {
                 error={fieldErrors.machineModel}
                 disabled={isSubmitting}
                 required
+                aria-invalid={!!fieldErrors.machineModel}
+                aria-describedby="machineModel-hint machineModel-error"
+                name="machineModel"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p id="machineModel-hint" className="text-xs text-muted-foreground mt-1">
                 Enter the exact model number of the equipment
               </p>
+              {fieldErrors.machineModel && (
+                <p id="machineModel-error" className="text-xs text-destructive mt-1">
+                  {fieldErrors.machineModel}
+                </p>
+              )}
             </div>
 
             {/* Work Order ID */}
@@ -157,8 +165,10 @@ export default function NewTroubleshootingSessionPage() {
                 value={formData.workOrderId}
                 onChange={(e) => handleChange('workOrderId', e.target.value)}
                 disabled={isSubmitting}
+                aria-describedby="workOrderId-hint"
+                name="workOrderId"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p id="workOrderId-hint" className="text-xs text-muted-foreground mt-1">
                 Optional: Link this session to a CMMS work order
               </p>
             </div>
@@ -179,8 +189,10 @@ export default function NewTroubleshootingSessionPage() {
                 onChange={(e) => handleChange('description', e.target.value)}
                 disabled={isSubmitting}
                 className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
+                aria-describedby="description-hint"
+                name="description"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p id="description-hint" className="text-xs text-muted-foreground mt-1">
                 Optional: Briefly describe what's happening
               </p>
             </div>
@@ -205,7 +217,10 @@ export default function NewTroubleshootingSessionPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+              <div
+                className="bg-destructive/10 border border-destructive/20 rounded-lg p-4"
+                role="alert"
+              >
                 <p className="text-sm text-destructive">{error}</p>
               </div>
             )}

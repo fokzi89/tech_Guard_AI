@@ -1,4 +1,3 @@
-import { CoreMessage } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { generateEmbedding } from '@/lib/rag/embeddings';
 
@@ -8,7 +7,7 @@ import { generateEmbedding } from '@/lib/rag/embeddings';
 export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp?: string; // Optional for compatibility with CoreMessage
+  timestamp?: string;
 }
 
 /**
@@ -17,7 +16,7 @@ export interface Message {
 export interface GuardianInput {
   userMessage: string;                // Raw user input
   machineModel: string;               // Machine being troubleshot
-  conversationHistory: CoreMessage[];     // Previous conversation for context (using Vercel AI SDK CoreMessage)
+  conversationHistory: any[];     // Previous conversation for context
   orgId: string;                      // For fetching org-specific blacklist rules
 }
 
@@ -71,7 +70,7 @@ export async function guardianAgent(input: GuardianInput): Promise<GuardianOutpu
 
     // Call the RPC function `check_safety_blacklist`
     // Assumes T023 created this function
-    const { data: matchedRules, error } = await supabase.rpc('check_safety_blacklist', {
+    const { data: matchedRules, error } = await (supabase.rpc as any)('check_safety_blacklist', {
       query_embedding: embedding,
       filter_machine_model: machineModel,
       match_threshold: 0.82, // Threshold per spec (adjusted to 0.82 for safety margin)
@@ -133,15 +132,30 @@ export async function guardianAgent(input: GuardianInput): Promise<GuardianOutpu
 /**
  * Verify Isolation from Photo
  * Uses Vision model to confirm if power is disconnected.
+ * Supports both Google Gemini and OpenRouter vision models.
  */
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
+import { createOpenRouterClient, getOpenRouterModel, shouldUseOpenRouter } from '@/lib/ai/openrouter-config';
 
 export async function verifyIsolation(photoUrl: string): Promise<{ verified: boolean; reasoning: string }> {
   try {
+    const useOpenRouter = shouldUseOpenRouter();
+    let model;
+
+    if (useOpenRouter) {
+      const openrouter = createOpenRouterClient();
+      const modelName = getOpenRouterModel('vision');
+      model = openrouter(modelName);
+      console.log(`[Guardian] Using OpenRouter vision model: ${modelName}`);
+    } else {
+      model = google('gemini-1.5-pro-latest');
+      console.log('[Guardian] Using Google Gemini vision model');
+    }
+
     const result = await generateObject({
-      model: google('gemini-1.5-pro-latest'),
+      model,
       schema: z.object({
         verified: z.boolean().describe('True if the photo clearly shows disconnected power or lockout/tagout.'),
         reasoning: z.string().describe('Explanation of what is seen in the photo.')

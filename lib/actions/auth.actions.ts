@@ -3,50 +3,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export async function registerSuperAdmin(email: string, password: string, fullName: string) {
-    try {
-        const adminClient = createAdminClient()
+/**
+ * Super Admin Registration - REMOVED
+ * Super admins should be created directly via Supabase Dashboard:
+ * 1. Go to Authentication > Users in Supabase Dashboard
+ * 2. Click "Add user" > Create new user
+ * 3. Enter email and password
+ * 4. After creating, manually insert profile:
+ *    INSERT INTO profiles (id, org_id, role, full_name)
+ *    VALUES ('user-id-from-auth', NULL, 'super_admin', 'Full Name');
+ */
 
-        // Create the auth user using admin client (auto-confirms email)
-        const { data: authData, error: signUpError } = await adminClient.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true, // Auto-confirm email
-            user_metadata: {
-                full_name: fullName,
-            },
-        })
-
-        if (signUpError) throw signUpError
-        if (!authData.user) throw new Error('User creation failed')
-
-        // Create profile (bypasses RLS)
-        const { error: profileError } = await adminClient
-            .from('profiles')
-            .insert({
-                id: authData.user.id,
-                org_id: null,
-                role: 'super_admin',
-                full_name: fullName,
-            })
-
-        if (profileError) {
-            // If profile creation fails, try to delete the auth user
-            await adminClient.auth.admin.deleteUser(authData.user.id)
-            throw profileError
-        }
-
-        return { success: true, user: authData.user }
-    } catch (error) {
-        console.error('Super admin registration error:', error)
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : 'Registration failed'
-        }
-    }
-}
-
-export async function registerWithInvite(token: string, password: string, fullName: string) {
+export async function registerWithInvite(token: string, password: string, fullName: string, email?: string) {
     try {
         const supabase = await createClient()
         const adminClient = createAdminClient()
@@ -58,15 +26,23 @@ export async function registerWithInvite(token: string, password: string, fullNa
             .eq('token', token)
             .eq('used', false)
             .gt('expires_at', new Date().toISOString())
-            .single()
+            .single<any>()
 
         if (inviteError || !invite) {
             throw new Error('Invalid or expired invite token')
         }
 
+        // Determine email to use: either from token (specific invite) or from argument (generic invite)
+        // If invite.email is a placeholder (e.g. pending@invite.link), we MUST use the provided email
+        const registerEmail = (invite.email && invite.email !== 'pending@invite.link') ? invite.email : email
+
+        if (!registerEmail) {
+            throw new Error('Email address is required')
+        }
+
         // Create the auth user using admin client (auto-confirms email)
         const { data: authData, error: signUpError } = await adminClient.auth.admin.createUser({
-            email: invite.email,
+            email: registerEmail,
             password,
             email_confirm: true, // Auto-confirm email
             user_metadata: {
@@ -85,7 +61,7 @@ export async function registerWithInvite(token: string, password: string, fullNa
                 org_id: invite.org_id,
                 role: invite.role,
                 full_name: fullName,
-            })
+            } as any)
 
         if (profileError) {
             // If profile creation fails, try to delete the auth user
@@ -94,8 +70,8 @@ export async function registerWithInvite(token: string, password: string, fullNa
         }
 
         // Mark invite as used
-        await adminClient
-            .from('invite_tokens')
+        (adminClient
+            .from('invite_tokens') as any)
             .update({ used: true })
             .eq('token', token)
 
@@ -119,7 +95,7 @@ export async function createOrganization(name: string, subscriptionTier: 'basic'
                 name,
                 subscription_tier: subscriptionTier,
                 status: 'active',
-            })
+            } as any)
             .select()
             .single()
 
@@ -164,7 +140,7 @@ export async function generateInviteToken(
                 token,
                 expires_at: expiresAt.toISOString(),
                 created_by: user.id,
-            })
+            } as any)
             .select()
             .single()
 

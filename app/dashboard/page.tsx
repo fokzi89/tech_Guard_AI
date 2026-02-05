@@ -20,19 +20,52 @@ export default function DashboardPage() {
     }, [])
 
     const loadUserData = async () => {
-        const currentUser = await authService.getCurrentUser()
-        if (!currentUser) {
-            router.push('/auth/login')
-            return
-        }
+        try {
+            const currentUser = await authService.getCurrentUser()
+            if (!currentUser) {
+                // Only redirect if we're sure there's no session
+                // Add a small retry to handle cookie sync issues
+                await new Promise(resolve => setTimeout(resolve, 500))
+                const retryUser = await authService.getCurrentUser()
+                if (!retryUser) {
+                    router.push('/auth/login')
+                    return
+                }
+                setUser(retryUser)
+                return
+            }
 
-        setUser(currentUser)
+            setUser(currentUser)
 
-        // If super admin, load all organizations
-        if (currentUser.profile.role === 'super_admin') {
-            const result = await authService.getAllOrganizations()
-            if (result.success && result.organizations) {
-                setOrganizations(result.organizations)
+            // If super admin, load all organizations
+            if (currentUser.profile.role === 'super_admin') {
+                const result = await authService.getAllOrganizations()
+                if (result.success && result.organizations) {
+                    setOrganizations(result.organizations)
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error)
+            // On error, wait and retry once before redirecting
+            await new Promise(resolve => setTimeout(resolve, 500))
+            try {
+                const retryUser = await authService.getCurrentUser()
+                if (retryUser) {
+                    setUser(retryUser)
+                    if (retryUser.profile.role === 'super_admin') {
+                        const result = await authService.getAllOrganizations()
+                        if (result.success && result.organizations) {
+                            setOrganizations(result.organizations)
+                        }
+                    }
+                } else {
+                    router.push('/auth/login')
+                    return
+                }
+            } catch (retryError) {
+                console.error('Retry failed:', retryError)
+                router.push('/auth/login')
+                return
             }
         }
 
@@ -408,19 +441,25 @@ export default function DashboardPage() {
                                     </div>
                                 </a>
 
-                                <div className="group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform opacity-50 cursor-not-allowed">
+                                <a
+                                    href="/dashboard/organization/manuals"
+                                    className="group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                >
                                     <div className="flex items-center space-x-4">
-                                        <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                             </svg>
                                         </div>
                                         <div className="flex-1">
                                             <h4 className="text-xl font-bold text-white mb-1">Manuals</h4>
-                                            <p className="text-orange-100 text-sm">Coming soon</p>
+                                            <p className="text-orange-100 text-sm">Manage documentation</p>
                                         </div>
+                                        <svg className="w-6 h-6 text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
                                     </div>
-                                </div>
+                                </a>
                             </div>
                         </div>
 
@@ -520,9 +559,12 @@ export default function DashboardPage() {
                                     </div>
                                 </button>
 
-                                <div className="group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform opacity-50 cursor-not-allowed">
+                                <button
+                                    onClick={() => router.push('/dashboard/technician/manuals')}
+                                    className="group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                >
                                     <div className="flex items-center space-x-4">
-                                        <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                             </svg>
@@ -531,12 +573,18 @@ export default function DashboardPage() {
                                             <h4 className="text-xl font-bold text-white mb-1">View Manuals</h4>
                                             <p className="text-purple-100 text-sm">Browse documentation</p>
                                         </div>
+                                        <svg className="w-6 h-6 text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
                                     </div>
-                                </div>
+                                </button>
 
-                                <div className="group bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform opacity-50 cursor-not-allowed">
+                                <button
+                                    onClick={() => router.push('/dashboard/technician/reports')}
+                                    className="group bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                >
                                     <div className="flex items-center space-x-4">
-                                        <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                             </svg>
@@ -545,8 +593,11 @@ export default function DashboardPage() {
                                             <h4 className="text-xl font-bold text-white mb-1">My Reports</h4>
                                             <p className="text-green-100 text-sm">View service reports</p>
                                         </div>
+                                        <svg className="w-6 h-6 text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
                                     </div>
-                                </div>
+                                </button>
 
                                 <button
                                     onClick={() => router.push('/dashboard/troubleshoot/history')}

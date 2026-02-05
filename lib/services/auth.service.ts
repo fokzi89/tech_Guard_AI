@@ -5,43 +5,10 @@ export class AuthService {
     private supabase = createClient()
 
     /**
-     * Super Admin Registration - Only for initial super admin accounts
+     * Super Admin Registration - REMOVED
+     * Use server action registerSuperAdmin() from @/lib/actions/auth.actions instead
+     * This ensures proper security and admin client usage
      */
-    async registerSuperAdmin(email: string, password: string, fullName: string) {
-        try {
-            // Sign up the user
-            const { data: authData, error: signUpError } = await this.supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        full_name: fullName,
-                        role: 'super_admin',
-                    },
-                },
-            })
-
-            if (signUpError) throw signUpError
-            if (!authData.user) throw new Error('User creation failed')
-
-            // Create profile
-            const { error: profileError } = await this.supabase
-                .from('profiles')
-                .insert({
-                    id: authData.user.id,
-                    org_id: null,
-                    role: 'super_admin',
-                    full_name: fullName,
-                })
-
-            if (profileError) throw profileError
-
-            return { success: true, user: authData.user }
-        } catch (error) {
-            console.error('Super admin registration error:', error)
-            return { success: false, error: error instanceof Error ? error.message : 'Registration failed' }
-        }
-    }
 
     /**
      * Create Organization - Super admin only
@@ -54,7 +21,7 @@ export class AuthService {
                     name,
                     subscription_tier: subscriptionTier,
                     status: 'active',
-                })
+                } as any)
                 .select()
                 .single()
 
@@ -96,7 +63,7 @@ export class AuthService {
                     token,
                     expires_at: expiresAt.toISOString(),
                     created_by: user.id,
-                })
+                } as any)
                 .select()
                 .single()
 
@@ -121,7 +88,7 @@ export class AuthService {
                 .from('invite_tokens')
                 .select(`
           *,
-          organization:organizations(*)
+          organization:organizations!invite_tokens_org_id_fkey(*)
         `)
                 .eq('token', token)
                 .eq('used', false)
@@ -139,58 +106,10 @@ export class AuthService {
     }
 
     /**
-     * Register with Invite Token - For org_admin and technician
+     * Register with Invite Token - REMOVED
+     * Use server action registerWithInvite() from @/lib/actions/auth.actions instead
+     * This ensures proper security and admin client usage
      */
-    async registerWithInvite(token: string, password: string, fullName: string) {
-        try {
-            // Verify the invite token first
-            const verifyResult = await this.verifyInviteToken(token)
-            if (!verifyResult.success || !verifyResult.invite) {
-                throw new Error(verifyResult.error || 'Invalid invite')
-            }
-
-            const invite = verifyResult.invite
-
-            // Sign up the user
-            const { data: authData, error: signUpError } = await this.supabase.auth.signUp({
-                email: invite.email,
-                password,
-                options: {
-                    data: {
-                        full_name: fullName,
-                        role: invite.role,
-                        org_id: invite.org_id,
-                    },
-                },
-            })
-
-            if (signUpError) throw signUpError
-            if (!authData.user) throw new Error('User creation failed')
-
-            // Create profile
-            const { error: profileError } = await this.supabase
-                .from('profiles')
-                .insert({
-                    id: authData.user.id,
-                    org_id: invite.org_id,
-                    role: invite.role,
-                    full_name: fullName,
-                })
-
-            if (profileError) throw profileError
-
-            // Mark invite as used
-            await this.supabase
-                .from('invite_tokens')
-                .update({ used: true })
-                .eq('token', token)
-
-            return { success: true, user: authData.user }
-        } catch (error) {
-            console.error('Invite registration error:', error)
-            return { success: false, error: error instanceof Error ? error.message : 'Registration failed' }
-        }
-    }
 
     /**
      * Sign In
@@ -234,11 +153,11 @@ export class AuthService {
             const { data: { user } } = await this.supabase.auth.getUser()
             if (!user) return null
 
-            const { data: profile, error } = await this.supabase
+            const { data: profileData, error } = await this.supabase
                 .from('profiles')
                 .select(`
           *,
-          organization:organizations(*)
+          organization:organizations!profiles_org_id_fkey(*)
         `)
                 .eq('id', user.id)
                 .maybeSingle()
@@ -248,7 +167,8 @@ export class AuthService {
                 return null
             }
 
-            if (!profile) return null
+            if (!profileData) return null
+            const profile = profileData as any;
 
             return {
                 id: user.id,
