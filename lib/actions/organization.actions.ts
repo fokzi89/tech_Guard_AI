@@ -49,6 +49,7 @@ export async function getOrganizationMembers() {
             success: true,
             members,
             orgName: orgData?.name,
+            orgId: profile.org_id,
             currentUserRole: profile.role
         }
 

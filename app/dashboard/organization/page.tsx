@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StatsCard } from '@/app/components/dashboard/StatsCard'
 import { Button } from '@/app/components/shared/Button'
-import { InviteTechnicianModal } from '@/app/components/organization/InviteTechnicianModal'
+import { InviteUserModal } from '@/app/components/dashboard/InviteUserModal'
 import Link from 'next/link'
 
 interface Organization {
@@ -19,6 +19,7 @@ export default function OrganizationPage() {
     const [organization, setOrganization] = useState<Organization | null>(null)
     const [memberCount, setMemberCount] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [currentUserRole, setCurrentUserRole] = useState<'super_admin' | 'org_admin' | 'technician'>('technician')
     const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
     useEffect(() => {
@@ -33,11 +34,14 @@ export default function OrganizationPage() {
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('org_id')
+            .select('org_id, role')
             .eq('id', user.id)
             .single()
 
         const profileData = profile as any;
+        if (profileData?.role) {
+            setCurrentUserRole(profileData.role)
+        }
 
         if (profileData?.org_id) {
             const { data: orgData } = await supabase
@@ -149,7 +153,7 @@ export default function OrganizationPage() {
                                     </svg>
                                 </div>
                                 <div className="ml-4">
-                                    <h3 className="text-sm font-medium gradient-text">Invite Technician</h3>
+                                    <h3 className="text-sm font-medium gradient-text">Invite User</h3>
                                     <p className="text-sm gradient-text-muted">Generate invite link for new members</p>
                                 </div>
                             </div>
@@ -207,11 +211,15 @@ export default function OrganizationPage() {
                 </div>
             </div>
 
-            {/* Invite Technician Modal */}
-            <InviteTechnicianModal
-                open={inviteModalOpen}
-                onClose={() => setInviteModalOpen(false)}
-            />
+            {/* Invite User Modal */}
+            {inviteModalOpen && organization && (
+                <InviteUserModal
+                    onClose={() => setInviteModalOpen(false)}
+                    currentUserRole={currentUserRole}
+                    currentOrgId={organization.id}
+                    currentOrgName={organization.name}
+                />
+            )}
         </div>
     )
 }

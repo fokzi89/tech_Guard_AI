@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getOrganizationMembers } from '@/lib/actions/organization.actions'
 import { StatsCard } from '@/app/components/dashboard/StatsCard'
 import { Button } from '@/app/components/shared/Button'
-import { InviteTechnicianModal } from '@/app/components/organization/InviteTechnicianModal'
+import { InviteUserModal } from '@/app/components/dashboard/InviteUserModal'
 import Link from 'next/link'
 
 interface Member {
@@ -20,6 +20,8 @@ export default function OrganizationMembersPage() {
     const [members, setMembers] = useState<Member[]>([])
     const [loading, setLoading] = useState(true)
     const [orgName, setOrgName] = useState('')
+    const [orgId, setOrgId] = useState('')
+    const [currentUserRole, setCurrentUserRole] = useState<'super_admin' | 'org_admin' | 'technician'>('technician')
     const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
     useEffect(() => {
@@ -33,6 +35,8 @@ export default function OrganizationMembersPage() {
             if (result.success) {
                 setMembers(result.members || [])
                 setOrgName(result.orgName || '')
+                setOrgId(result.orgId || '')
+                setCurrentUserRole(result.currentUserRole as any)
             } else {
                 console.error('Failed to load members:', result.error)
             }
@@ -79,7 +83,7 @@ export default function OrganizationMembersPage() {
                         <p className="gradient-text-muted mt-1">{orgName}</p>
                     </div>
                     <Button variant="outline" onClick={() => setInviteModalOpen(true)}>
-                        Invite Technician
+                        Invite User
                     </Button>
                 </div>
 
@@ -170,11 +174,15 @@ export default function OrganizationMembersPage() {
                 </div>
             </div>
 
-            {/* Invite Technician Modal */}
-            <InviteTechnicianModal
-                open={inviteModalOpen}
-                onClose={() => setInviteModalOpen(false)}
-            />
+            {/* Invite User Modal */}
+            {inviteModalOpen && (
+                <InviteUserModal
+                    onClose={() => setInviteModalOpen(false)}
+                    currentUserRole={currentUserRole}
+                    currentOrgId={orgId}
+                    currentOrgName={orgName}
+                />
+            )}
         </div>
     )
 }
