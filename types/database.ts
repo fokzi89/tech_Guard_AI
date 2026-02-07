@@ -155,6 +155,53 @@ export interface Database {
                     updated_at?: string
                 }
             }
+            org_manuals: {
+                Row: {
+                    id: string
+                    org_id: string
+                    title: string
+                    storage_url: string
+                    file_name: string
+                    file_size: number | null
+                    mime_type: string | null
+                    machine_model: string | null
+                    version: string | null
+                    status: 'processing' | 'active' | 'error' | 'archived' | null
+                    uploaded_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    org_id: string
+                    title: string
+                    storage_url: string
+                    file_name: string
+                    file_size?: number | null
+                    mime_type?: string | null
+                    machine_model?: string | null
+                    version?: string | null
+                    status?: 'processing' | 'active' | 'error' | 'archived' | null
+                    uploaded_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    org_id?: string
+                    title?: string
+                    storage_url?: string
+                    file_name?: string
+                    file_size?: number | null
+                    mime_type?: string | null
+                    machine_model?: string | null
+                    version?: string | null
+                    status?: 'processing' | 'active' | 'error' | 'archived' | null
+                    uploaded_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
             organizations: {
                 Row: {
                     id: string

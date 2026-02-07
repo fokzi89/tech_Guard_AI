@@ -12,6 +12,8 @@ export async function proxy(request: NextRequest) {
     return await updateSession(request)
 }
 
+export default proxy;
+
 export const config = {
     matcher: [
         /*

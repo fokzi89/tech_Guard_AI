@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   // Experimental features for better performance
   experimental: {
     optimizePackageImports: ['@supabase/ssr', 'lucide-react'],
+    serverActions: {
+      bodySizeLimit: '50mb', // Allow larger PDF uploads
+    },
   },
 
   // Image optimization
@@ -39,6 +42,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-};
+} as any; // Type assertion needed for serverActions until types are updated
 
 export default bundleAnalyzer(nextConfig);

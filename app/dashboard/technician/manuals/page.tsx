@@ -1,21 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/app/components/shared/Button'
-import { ArrowLeft, FileText, Search, ExternalLink } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-
-interface Manual {
-    id: string
-    title: string
-    machine_model: string
-    file_url: string
-    created_at: string
-}
+import { getOrgManuals, type Manual } from '@/lib/actions/manuals.actions'
+import { FileText, Search, ExternalLink, RefreshCw } from 'lucide-react'
 
 export default function TechnicianManualsPage() {
-    const router = useRouter()
     const [manuals, setManuals] = useState<Manual[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -25,32 +14,8 @@ export default function TechnicianManualsPage() {
     }, [])
 
     const loadManuals = async () => {
-        const supabase = createClient()
-
-        // Get current user's profile to find org_id
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: profileData } = await supabase
-            .from('profiles')
-            .select('org_id')
-            .eq('id', user.id)
-            .single()
-
-        const profile = profileData as any;
-
-        if (!profile?.org_id) {
-            console.error('No organization found')
-            setLoading(false)
-            return
-        }
-
-        // Fetch manuals for this organization
-        const { data, error } = await supabase
-            .from('manuals')
-            .select('*')
-            .eq('org_id', profile.org_id)
-            .order('created_at', { ascending: false })
+        setLoading(true)
+        const { data, error } = await getOrgManuals()
 
         if (error) {
             console.error('Error loading manuals:', error)
@@ -62,7 +27,7 @@ export default function TechnicianManualsPage() {
 
     const filteredManuals = manuals.filter(manual =>
         manual.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        manual.machine_model.toLowerCase().includes(searchQuery.toLowerCase())
+        (manual.machine_model && manual.machine_model.toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
     return (
@@ -76,6 +41,13 @@ export default function TechnicianManualsPage() {
                             <p className="gradient-text-muted mt-1">Access documentation and guides</p>
                         </div>
                     </div>
+                    <button
+                        onClick={loadManuals}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-blue-200 transition-colors"
+                        title="Refresh list"
+                    >
+                        <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                 </div>
 
                 {/* Search */}
@@ -117,8 +89,11 @@ export default function TechnicianManualsPage() {
                                     <div className="p-3 bg-blue-500/20 rounded-lg">
                                         <FileText className="h-6 w-6 text-blue-400" />
                                     </div>
-                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-white/10 text-blue-200 border border-white/10">
-                                        PDF
+                                    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${manual.status === 'active'
+                                            ? 'bg-green-500/10 text-green-300 border-green-500/20'
+                                            : 'bg-white/10 text-blue-200 border-white/10'
+                                        }`}>
+                                        {manual.status === 'active' ? 'PDF' : manual.status}
                                     </span>
                                 </div>
 
@@ -126,24 +101,30 @@ export default function TechnicianManualsPage() {
                                     {manual.title}
                                 </h3>
 
-                                <div className="flex items-center text-sm text-blue-200 mb-4">
-                                    <span className="opacity-70 mr-2">Model:</span>
-                                    <span className="font-medium">{manual.machine_model}</span>
+                                <div className="flex items-center text-sm text-blue-200 mb-4 h-5">
+                                    {manual.machine_model && (
+                                        <>
+                                            <span className="opacity-70 mr-2">Model:</span>
+                                            <span className="font-medium">{manual.machine_model}</span>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="pt-4 border-t border-white/10 flex items-center justify-between">
                                     <span className="text-xs text-blue-300/60">
                                         Added {new Date(manual.created_at).toLocaleDateString()}
                                     </span>
-                                    <a
-                                        href={manual.file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
-                                    >
-                                        View
-                                        <ExternalLink className="h-4 w-4 ml-1" />
-                                    </a>
+                                    {manual.status === 'active' && (
+                                        <a
+                                            href={manual.storage_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                                        >
+                                            View
+                                            <ExternalLink className="h-4 w-4 ml-1" />
+                                        </a>
+                                    )}
                                 </div>
                             </div>
                         ))}

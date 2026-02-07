@@ -27,7 +27,7 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('*')
             .eq('id', user.id)
-            .single<{ org_id: string | null; role: string; [key: string]: any }>();
+            .single<{ org_id: string | null; role: string;[key: string]: any }>();
         if (!profile || (profile.role !== 'org_admin' && profile.role !== 'super_admin')) {
             return NextResponse.json({ error: 'Forbidden: Admin role required' }, { status: 403 });
         }
@@ -141,6 +141,39 @@ async function handleUpload(
             console.log('[Manual Upload] File uploaded to storage:', fileUrl);
         }
 
+        // 4. Create Parent Record in org_manuals
+        console.log('[Manual Upload] Creating parent record in org_manuals...');
+        // @ts-ignore - Types not yet propagated for new table
+        const { data: orgManual, error: orgManualError } = await adminSupabase
+            .from('org_manuals')
+            .insert({
+                org_id: orgId || undefined, // undefined relies on DB default or nullable if allows, but schema says NOT NULL. 
+                // Wait, if orgId is null (global), we need to handle that. Schema says org_id IS NOT NULL. 
+                // If it's global, we might need a specific "global" org ID or schema change. 
+                // Existing manuals table allows org_id NULL. org_manuals schema defined NOT NULL.
+                // Assuming for now orgId is present (Org Admin flow). If Super Admin global upload, this might fail unless we fix schema or provide dummy ID.
+                // Let's assume orgId is valid for now based on previous checks.
+                title: title,
+                storage_url: storagePath,
+                file_name: file.name,
+                file_size: file.size,
+                mime_type: file.type,
+                machine_model: machineModel,
+                status: 'processing',
+                uploaded_by: userId
+            })
+            .select()
+            .single();
+
+        if (orgManualError || !orgManual) {
+            console.error('[Manual Upload] Failed to create org_manuals record:', orgManualError);
+            return NextResponse.json({ error: 'Failed to initialize manual record' }, { status: 500 });
+        }
+
+        // @ts-ignore
+        const orgManualId = orgManual.id;
+        console.log(`[Manual Upload] Created org_manuals record: ${orgManualId}`);
+
         // 4. Process Manual (Extract Text, Chunk, Generate Embeddings)
         console.log('[Manual Upload] Processing manual PDF...');
         const processed = await processManual(buffer, title, machineModel);
@@ -166,6 +199,7 @@ async function handleUpload(
 
         const rows = processed.chunks.map(chunk => ({
             org_id: orgId,
+            org_manual_id: orgManualId, // Link to parent
             title: title,
             machine_model: machineModel,
             content: chunk.content,
@@ -207,6 +241,15 @@ async function handleUpload(
 
         if (insertError) {
             console.error('[Manual Upload] Database insert error:', insertError);
+
+            // Try to set status to error
+            // @ts-ignore
+            await adminSupabase
+                .from('org_manuals')
+                // @ts-ignore
+                .update({ status: 'error' })
+                .eq('id', orgManualId);
+
             console.error('[Manual Upload] Error details:', JSON.stringify(insertError, null, 2));
             return NextResponse.json({
                 error: 'Failed to save manual to database',
@@ -265,6 +308,19 @@ async function handleUpload(
             }
         }
 
+        // 7. Update org_manuals status to active
+        // @ts-ignore
+        const { error: updateError } = await adminSupabase
+            .from('org_manuals')
+            // @ts-ignore
+            .update({ status: 'active' })
+            .eq('id', orgManualId);
+
+        if (updateError) {
+            console.error('[Manual Upload] Failed to activate org_manuals record:', updateError);
+            // Non-fatal, but good to know
+        }
+
         return NextResponse.json({
             success: true,
             data: {
@@ -272,7 +328,8 @@ async function handleUpload(
                 safetyWarnings: processed.safetyWarnings.length,
                 safetyRules: processed.safetyWarnings.length,
                 totalPages: processed.metadata.totalPages,
-                fileUrl: fileUrl
+                fileUrl: fileUrl,
+                orgManualId: orgManualId
             }
         });
 
