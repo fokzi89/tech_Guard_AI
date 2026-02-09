@@ -3,15 +3,19 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/app/components/shared/Button'
-import { FileText, Search, Calendar, ChevronRight } from 'lucide-react'
+import { FileText, Search, Calendar, ChevronRight, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Report {
     id: string
-    title: string
-    created_at: string
-    status: string
-    customer_name?: string
+    incident_id: string
+    work_order: string | null
+    as_found: string
+    work_performed: string
+    as_left: string
+    generated_at: string
+    machine_model?: string
+    incident_status?: string
 }
 
 export default function TechnicianReportsPage() {
@@ -28,39 +32,60 @@ export default function TechnicianReportsPage() {
         const supabase = createClient()
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        // Fetch reports for this technician
-        // Assuming table name is 'service_reports' or similar based on typical schema, but defaulting to empty for now if not known
-        // Correct approach would be to check db types, but for this step I will mock/placeholder or try 'service_reports'
-        // If 'service_reports' doesn't exist, this will error.
-        // Given I don't see the schema, I will create a placeholder page that *tries* to fetch but handles errors gracefully, 
-        // OR I will just show a UI that says "No reports found" if the table is missing.
-        // For the sake of "leading to the list of reports", a page structure is critical.
+        if (!user) {
+            setLoading(false)
+            return
+        }
 
         try {
-            // Try fetching from a likely table name, or just set empty for now until schema is confirmed.
-            // I'll assume 'service_reports' or 'troubleshooting_sessions' (which likely generate reports).
-            // Let's try 'troubleshooting_sessions' as that was mentioned in dashboard stats.
+            // Fetch service reports for this technician with incident details
             const { data, error } = await supabase
-                .from('troubleshooting_sessions')
-                .select('id, title, created_at, status, customer_name')
-                .eq('technician_id', user.id)
-                .order('created_at', { ascending: false })
+                .from('service_reports')
+                .select(`
+                    id,
+                    incident_id,
+                    work_order,
+                    as_found,
+                    work_performed,
+                    as_left,
+                    generated_at,
+                    incidents!inner(
+                        user_id,
+                        machine_model,
+                        status
+                    )
+                `)
+                .eq('incidents.user_id', user.id)
+                .order('generated_at', { ascending: false })
 
-            if (data) {
-                setReports(data)
+            if (error) {
+                console.error('Error loading reports:', error)
+            } else if (data) {
+                // Transform the data to flatten incident fields
+                const transformedReports = data.map((report: any) => ({
+                    id: report.id,
+                    incident_id: report.incident_id,
+                    work_order: report.work_order,
+                    as_found: report.as_found,
+                    work_performed: report.work_performed,
+                    as_left: report.as_left,
+                    generated_at: report.generated_at,
+                    machine_model: report.incidents?.machine_model,
+                    incident_status: report.incidents?.status
+                }))
+                setReports(transformedReports)
             }
         } catch (e) {
-            console.error('Error loading reports', e)
+            console.error('Error loading reports:', e)
         }
 
         setLoading(false)
     }
 
     const filteredReports = reports.filter(report =>
-        report.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        report.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
+        report.machine_model?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        report.work_order?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        report.as_found?.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
     return (
@@ -91,7 +116,10 @@ export default function TechnicianReportsPage() {
                 {/* Reports List */}
                 <div className="glass-panel rounded-xl overflow-hidden">
                     {loading ? (
-                        <div className="p-8 text-center text-blue-200">Loading reports...</div>
+                        <div className="p-8 text-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto mb-2" />
+                            <p className="text-blue-200">Loading reports...</p>
+                        </div>
                     ) : filteredReports.length === 0 ? (
                         <div className="p-16 text-center">
                             <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -99,34 +127,52 @@ export default function TechnicianReportsPage() {
                             </div>
                             <h3 className="text-xl font-medium text-white mb-2">No reports found</h3>
                             <p className="text-blue-200">
-                                You haven&apos;t generated any service reports yet.
+                                {searchQuery
+                                    ? 'No reports match your search criteria.'
+                                    : 'You haven\'t generated any service reports yet.'}
                             </p>
                         </div>
                     ) : (
                         <div className="divide-y divide-white/10">
                             {filteredReports.map((report) => (
-                                <div key={report.id} className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer">
-                                    <div className="flex items-center space-x-4">
+                                <div
+                                    key={report.id}
+                                    className="p-4 hover:bg-white/5 transition-colors flex items-center justify-between group cursor-pointer"
+                                    onClick={() => router.push(`/dashboard/technician/reports/${report.id}`)}
+                                >
+                                    <div className="flex items-center space-x-4 flex-1">
                                         <div className="p-2 bg-green-500/20 rounded-lg text-green-400">
                                             <FileText className="h-6 w-6" />
                                         </div>
-                                        <div>
-                                            <h4 className="text-white font-medium">{report.title || 'Untitled Report'}</h4>
+                                        <div className="flex-1">
+                                            <h4 className="text-white font-medium">
+                                                {report.machine_model || 'Service Report'}
+                                            </h4>
                                             <div className="flex items-center text-sm text-blue-200 mt-1 space-x-4">
                                                 <span className="flex items-center">
                                                     <Calendar className="h-3 w-3 mr-1" />
-                                                    {new Date(report.created_at).toLocaleDateString()}
+                                                    {new Date(report.generated_at).toLocaleString()}
                                                 </span>
-                                                {report.customer_name && (
-                                                    <span>{report.customer_name}</span>
+                                                {report.work_order && (
+                                                    <span className="text-xs bg-white/10 px-2 py-0.5 rounded">
+                                                        WO: {report.work_order}
+                                                    </span>
                                                 )}
                                             </div>
+                                            <p className="text-sm text-gray-400 mt-1 line-clamp-1">
+                                                {report.as_found}
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${report.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                                            }`}>
-                                            {report.status}
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            report.incident_status === 'resolved'
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : report.incident_status === 'open'
+                                                ? 'bg-blue-500/20 text-blue-400'
+                                                : 'bg-gray-500/20 text-gray-400'
+                                        }`}>
+                                            {report.incident_status || 'unknown'}
                                         </span>
                                         <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-white transition-colors" />
                                     </div>

@@ -70,7 +70,7 @@ const navItems: NavItem[] = [
   },
   {
     label: 'Troubleshoot',
-    href: '/dashboard/troubleshoot',
+    href: '/dashboard/troubleshoot/history',
     icon: MessageSquare,
     roles: ['technician']
   },
@@ -155,10 +155,9 @@ export function VerticalNav({ userRole, userName, orgName, onSignOut }: Vertical
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1
                   transition-colors duration-150
-                  ${
-                    active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ${active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   }
                 `}
               >

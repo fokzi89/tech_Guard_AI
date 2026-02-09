@@ -120,7 +120,9 @@ export default function SuperAdminSettingsPage() {
 
   const loadPreferences = async () => {
     try {
-      const response = await fetch('/api/user/preferences');
+      const response = await fetch('/api/user/preferences', {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setPreferences(data.preferences);
@@ -135,6 +137,7 @@ export default function SuperAdminSettingsPage() {
       const response = await fetch('/api/user/preferences', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ [key]: value }),
       });
 

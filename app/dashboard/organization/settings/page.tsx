@@ -91,7 +91,9 @@ export default function OrganizationSettingsPage() {
 
     const loadPreferences = async () => {
         try {
-            const response = await fetch('/api/user/preferences')
+            const response = await fetch('/api/user/preferences', {
+                credentials: 'include'
+            })
             if (response.ok) {
                 const data = await response.json()
                 setPreferences(data.preferences)
@@ -146,6 +148,7 @@ export default function OrganizationSettingsPage() {
             const response = await fetch('/api/org/settings', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ name: formData.name }),
             })
 
@@ -168,6 +171,7 @@ export default function OrganizationSettingsPage() {
             const response = await fetch('/api/user/preferences', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ [key]: value }),
             })
 

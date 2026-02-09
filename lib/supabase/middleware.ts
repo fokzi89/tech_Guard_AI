@@ -8,6 +8,12 @@ export async function updateSession(request: NextRequest) {
         request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route + '/')
     )
 
+    // API routes handle their own authentication - don't redirect them
+    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+
+    console.log(`[Middleware] Processing ${request.method} ${request.nextUrl.pathname}`)
+    console.log(`[Middleware] Is public route: ${isPublicRoute}, Is API route: ${isApiRoute}`)
+
     let supabaseResponse = NextResponse.next({
         request,
     })
@@ -56,10 +62,18 @@ export async function updateSession(request: NextRequest) {
     // issues with users being randomly logged out.
 
     // Skip auth check for public routes to improve performance
-    if (!isPublicRoute) {
-        const {
-            data: { user },
-        } = await supabase.auth.getUser()
+    // For API routes, let each endpoint handle its own authentication
+    if (!isPublicRoute && !isApiRoute) {
+        let user = null
+        try {
+            const {
+                data: { user: supabaseUser },
+            } = await supabase.auth.getUser()
+            user = supabaseUser
+        } catch (error) {
+            console.error('Middleware auth check failed:', error)
+            // Treat as not logged in
+        }
 
         if (!user) {
             // no user, potentially respond by redirecting the user to the login page

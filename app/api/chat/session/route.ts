@@ -1,11 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Database } from '@/types/database';
 
 const createSessionSchema = z.object({
   machineModel: z.string().min(1),
   workOrderId: z.string().optional()
 });
+
+// Type for incidents with profile view
+type IncidentWithProfile = Database['public']['Views']['incidents_with_profiles']['Row'];
 
 export async function POST(req: Request) {
   try {
@@ -78,9 +82,9 @@ export async function GET(req: Request) {
 
     console.log('[API] Fetching session for user:', user.id, 'Incident:', incidentId);
 
-    // Fetch session details
+    // Fetch session details with technician profile using view
     const { data: sessionDataRaw, error: sessionError } = await supabase
-      .from('incidents')
+      .from('incidents_with_profiles')
       .select('*')
       .eq('id', incidentId)
       .single();
@@ -90,27 +94,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Session not found', details: sessionError }, { status: 404 });
     }
 
-    const sessionData = sessionDataRaw as any;
-
-    if (!sessionData) {
+    if (!sessionDataRaw) {
       console.error('[API] Session data is null');
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    // Fetch technician details separately since there's no direct FK to profiles
-    const { data: technicianData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', sessionData.user_id)
-      .single();
-
-    console.log('[API] Session found:', sessionData.id);
-
-    // Combine data
-    const sessionWithTechnician = {
-      ...sessionData,
-      technician: technicianData
-    };
+    // Cast to typed interface
+    const sessionData = sessionDataRaw as IncidentWithProfile;
+    console.log('[API] Session found:', sessionData.id, 'with technician:', sessionData.technician);
 
     // Fetch messages
     const { data: messages, error: messagesError } = await supabase
@@ -129,7 +120,7 @@ export async function GET(req: Request) {
       machineModel: sessionData.machine_model,
       workOrderId: sessionData.external_ticket_id,
       status: sessionData.status,
-      technician: sessionWithTechnician.technician,
+      technician: sessionData.technician, // Already included from view
       createdAt: sessionData.created_at,
       updatedAt: sessionData.updated_at
     };

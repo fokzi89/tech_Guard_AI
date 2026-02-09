@@ -27,6 +27,7 @@ export function UserInvitationForm({ onSuccess }: UserInvitationFormProps) {
             const res = await fetch('/api/org/users/invite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ email, role })
             });
 

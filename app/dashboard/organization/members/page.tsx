@@ -82,9 +82,12 @@ export default function OrganizationMembersPage() {
                         <h1 className="text-3xl font-bold gradient-text">Team Members</h1>
                         <p className="gradient-text-muted mt-1">{orgName}</p>
                     </div>
-                    <Button variant="outline" onClick={() => setInviteModalOpen(true)}>
-                        Invite User
-                    </Button>
+                    {/* Only show Invite User for super_admin and org_admin */}
+                    {currentUserRole !== 'technician' && (
+                        <Button variant="outline" onClick={() => setInviteModalOpen(true)}>
+                            Invite User
+                        </Button>
+                    )}
                 </div>
 
                 {/* Stats */}

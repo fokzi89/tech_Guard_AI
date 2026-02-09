@@ -142,12 +142,13 @@ async function handleUpload(
         }
 
         // 4. Create Parent Record in org_manuals
+        // Create Parent Record in org_manuals
         console.log('[Manual Upload] Creating parent record in org_manuals...');
-        // @ts-ignore - Types not yet propagated for new table
         const { data: orgManual, error: orgManualError } = await adminSupabase
             .from('org_manuals')
             .insert({
-                org_id: orgId || undefined, // undefined relies on DB default or nullable if allows, but schema says NOT NULL. 
+                org_id: orgId as string, // Schema requires NOT NULL. Global manuals (null org_id) will fail at runtime until schema is updated.
+                // org_id: orgId || undefined, // undefined relies on DB default or nullable if allows, but schema says NOT NULL. 
                 // Wait, if orgId is null (global), we need to handle that. Schema says org_id IS NOT NULL. 
                 // If it's global, we might need a specific "global" org ID or schema change. 
                 // Existing manuals table allows org_id NULL. org_manuals schema defined NOT NULL.
@@ -161,7 +162,7 @@ async function handleUpload(
                 machine_model: machineModel,
                 status: 'processing',
                 uploaded_by: userId
-            })
+            } as any)
             .select()
             .single();
 

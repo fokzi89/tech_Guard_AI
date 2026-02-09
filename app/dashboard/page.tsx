@@ -3,75 +3,28 @@
 import { useState, useEffect, useMemo, memo } from 'react'
 import { authService } from '@/lib/services/auth.service'
 import { useRouter } from 'next/navigation'
-import type { AuthUser, Organization } from '@/types/auth'
+import type { Organization } from '@/types/auth'
 import { DashboardSkeleton } from '@/app/components/ui/dashboard-skeleton'
 import { InviteUserModal } from '@/app/components/dashboard/InviteUserModal'
+import { useUser } from '@/hooks/useUser'
+import { useOrganizations } from '@/hooks/useOrganizations'
+import { NavigationButton } from '@/app/components/ui/navigation-button'
+
 
 export default function DashboardPage() {
     const router = useRouter()
-    const [user, setUser] = useState<AuthUser | null>(null)
-    const [organizations, setOrganizations] = useState<Organization[]>([])
-    const [loading, setLoading] = useState(true)
+    const { user, loading: userLoading, mutate: mutateUser } = useUser()
+    const { organizations, loading: orgsLoading, mutate: mutateOrgs } = useOrganizations(user?.profile.role === 'super_admin')
     const [showCreateOrg, setShowCreateOrg] = useState(false)
     const [showInviteModal, setShowInviteModal] = useState(false)
     const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null)
 
     useEffect(() => {
-        loadUserData()
-    }, [])
-
-    const loadUserData = async () => {
-        try {
-            const currentUser = await authService.getCurrentUser()
-            if (!currentUser) {
-                // Only redirect if we're sure there's no session
-                // Add a small retry to handle cookie sync issues
-                await new Promise(resolve => setTimeout(resolve, 500))
-                const retryUser = await authService.getCurrentUser()
-                if (!retryUser) {
-                    router.push('/auth/login')
-                    return
-                }
-                setUser(retryUser)
-                return
-            }
-
-            setUser(currentUser)
-
-            // If super admin, load all organizations
-            if (currentUser.profile.role === 'super_admin') {
-                const result = await authService.getAllOrganizations()
-                if (result.success && result.organizations) {
-                    setOrganizations(result.organizations)
-                }
-            }
-        } catch (error) {
-            console.error('Error loading user data:', error)
-            // On error, wait and retry once before redirecting
-            await new Promise(resolve => setTimeout(resolve, 500))
-            try {
-                const retryUser = await authService.getCurrentUser()
-                if (retryUser) {
-                    setUser(retryUser)
-                    if (retryUser.profile.role === 'super_admin') {
-                        const result = await authService.getAllOrganizations()
-                        if (result.success && result.organizations) {
-                            setOrganizations(result.organizations)
-                        }
-                    }
-                } else {
-                    router.push('/auth/login')
-                    return
-                }
-            } catch (retryError) {
-                console.error('Retry failed:', retryError)
-                router.push('/auth/login')
-                return
-            }
+        if (!userLoading && !user) {
+            router.push('/auth/login')
         }
+    }, [user, userLoading, router])
 
-        setLoading(false)
-    }
 
     const handleSignOut = async () => {
         await authService.signOut()
@@ -88,9 +41,12 @@ export default function DashboardPage() {
         }
     }, [organizations])
 
-    if (loading) {
+    const isLoading = userLoading || (user?.profile.role === 'super_admin' && orgsLoading)
+
+    if (isLoading) {
         return <DashboardSkeleton />
     }
+
 
     return (
         <div className="min-h-screen gradient-blue-bg">
@@ -381,9 +337,10 @@ export default function DashboardPage() {
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <a
+                                <NavigationButton
                                     href="/dashboard/organization"
-                                    className="group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -399,11 +356,12 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </a>
+                                </NavigationButton>
 
-                                <a
+                                <NavigationButton
                                     href="/dashboard/organization/members"
-                                    className="group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -419,11 +377,12 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </a>
+                                </NavigationButton>
 
-                                <a
+                                <NavigationButton
                                     href="/dashboard/organization/settings"
-                                    className="group bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -440,11 +399,12 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </a>
+                                </NavigationButton>
 
-                                <a
+                                <NavigationButton
                                     href="/dashboard/organization/manuals"
-                                    className="group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -460,7 +420,7 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </a>
+                                </NavigationButton>
 
                                 <button
                                     onClick={() => setShowInviteModal(true)}
@@ -560,9 +520,10 @@ export default function DashboardPage() {
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => router.push('/dashboard/troubleshoot/new')}
-                                    className="group bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                <NavigationButton
+                                    href="/dashboard/troubleshoot/new"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -578,11 +539,12 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </button>
+                                </NavigationButton>
 
-                                <button
-                                    onClick={() => router.push('/dashboard/technician/manuals')}
-                                    className="group bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                <NavigationButton
+                                    href="/dashboard/technician/manuals"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -598,11 +560,12 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </button>
+                                </NavigationButton>
 
-                                <button
-                                    onClick={() => router.push('/dashboard/technician/reports')}
-                                    className="group bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                <NavigationButton
+                                    href="/dashboard/technician/reports"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -618,11 +581,12 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </button>
+                                </NavigationButton>
 
-                                <button
-                                    onClick={() => router.push('/dashboard/troubleshoot/history')}
-                                    className="group bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
+                                <NavigationButton
+                                    href="/dashboard/troubleshoot/history"
+                                    unstyled
+                                    className="group w-full bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl p-6 text-left transition-all shadow-lg hover:shadow-2xl hover:scale-105 transform"
                                 >
                                     <div className="flex items-center space-x-4">
                                         <div className="w-14 h-14 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -638,7 +602,7 @@ export default function DashboardPage() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </div>
-                                </button>
+                                </NavigationButton>
                             </div>
                         </div>
 
@@ -680,7 +644,10 @@ export default function DashboardPage() {
             {showCreateOrg && (
                 <CreateOrganizationModal
                     onClose={() => setShowCreateOrg(false)}
-                    onSuccess={loadUserData}
+                    onSuccess={() => {
+                        mutateUser()
+                        mutateOrgs()
+                    }}
                 />
             )}
 

@@ -22,7 +22,9 @@ export function ManualsList({ refreshTrigger }: { refreshTrigger: number }) {
     const loadManuals = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/manuals');
+            const res = await fetch('/api/manuals', {
+                credentials: 'include'
+            });
             if (res.ok) {
                 const data = await res.json();
                 setManuals(data);

@@ -105,7 +105,9 @@ export default function SettingsPage() {
 
   const loadPreferences = async () => {
     try {
-      const response = await fetch('/api/user/preferences');
+      const response = await fetch('/api/user/preferences', {
+        credentials: 'include'
+      });
       if (response.ok) {
         const data = await response.json();
         setPreferences(data.preferences);
@@ -123,6 +125,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ full_name: profileForm.full_name }),
       });
 
@@ -155,6 +158,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/user/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           newPassword: passwordForm.newPassword,
           confirmPassword: passwordForm.confirmPassword,
@@ -185,6 +189,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/user/preferences', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ [key]: value }),
       });
 
@@ -210,6 +215,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/user/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           password: deleteForm.password,
           confirmationText: deleteForm.confirmationText,

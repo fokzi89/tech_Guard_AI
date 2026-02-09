@@ -31,6 +31,7 @@ export default function ManualsPage() {
         try {
             const res = await fetch('/api/manuals/upload', {
                 method: 'POST',
+                credentials: 'include',
                 body: formData
             });
 

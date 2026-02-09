@@ -142,22 +142,25 @@ export default function OrganizationPage() {
                 <div className="glass-panel rounded-lg p-6">
                     <h2 className="text-lg font-semibold gradient-text mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div
-                            onClick={() => setInviteModalOpen(true)}
-                            className="glass-panel glass-panel-hover rounded-lg p-4 cursor-pointer"
-                        >
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4">
-                                    <h3 className="text-sm font-medium gradient-text">Invite User</h3>
-                                    <p className="text-sm gradient-text-muted">Generate invite link for new members</p>
+                        {/* Only show Invite User for super_admin and org_admin */}
+                        {currentUserRole !== 'technician' && (
+                            <div
+                                onClick={() => setInviteModalOpen(true)}
+                                className="glass-panel glass-panel-hover rounded-lg p-4 cursor-pointer"
+                            >
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-4">
+                                        <h3 className="text-sm font-medium gradient-text">Invite User</h3>
+                                        <p className="text-sm gradient-text-muted">Generate invite link for new members</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <Link href="/dashboard/organization/settings">
                             <div className="glass-panel glass-panel-hover rounded-lg p-4 cursor-pointer">

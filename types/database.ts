@@ -343,7 +343,27 @@ export interface Database {
             }
         }
         Views: {
-            [_ in never]: never
+            incidents_with_profiles: {
+                Row: {
+                    id: string
+                    org_id: string
+                    user_id: string
+                    machine_model: string
+                    external_ticket_id: string | null
+                    status: 'open' | 'resolved' | 'abandoned' | null
+                    safety_interventions: Json | null
+                    created_at: string
+                    updated_at: string
+                    resolved_at: string | null
+                    technician: Json | null
+                }
+                Insert: {
+                    [_ in never]: never
+                }
+                Update: {
+                    [_ in never]: never
+                }
+            }
         }
         Functions: {
             check_safety_blacklist: {
