@@ -136,6 +136,7 @@ export function PhotoUpload({
       const response = await fetch('/api/safety/verify-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           photoUrl: publicUrl,
           incidentId,

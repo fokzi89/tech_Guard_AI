@@ -87,8 +87,9 @@ export function MessageInput({
       const response = await fetch('/api/safety/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          message: text,
+          userMessage: text,
           machineModel,
         }),
       });

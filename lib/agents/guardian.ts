@@ -69,12 +69,9 @@ export async function guardianAgent(input: GuardianInput): Promise<GuardianOutpu
     const supabase = await createClient();
 
     // Call the RPC function `check_safety_blacklist`
-    // Assumes T023 created this function
     const { data: matchedRules, error } = await (supabase.rpc as any)('check_safety_blacklist', {
-      query_embedding: embedding,
-      filter_machine_model: machineModel,
-      match_threshold: 0.82, // Threshold per spec (adjusted to 0.82 for safety margin)
-      match_count: 1
+      input_embedding: embedding,
+      machine_model: machineModel
     });
 
     if (error) {

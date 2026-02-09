@@ -93,7 +93,7 @@ export async function searchSafetyBlacklist(
     try {
         const { data, error } = await (supabase
             .rpc as any)('check_safety_blacklist', {
-                user_input: userInput,
+                input_embedding: inputEmbedding,
                 machine_model: machineModel,
             })
 

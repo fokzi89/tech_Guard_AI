@@ -67,6 +67,7 @@ export default function NewTroubleshootingSessionPage() {
       const response = await fetch('/api/chat/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
 

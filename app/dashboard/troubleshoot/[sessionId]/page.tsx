@@ -65,7 +65,9 @@ export default function TroubleshootingSessionPage() {
     const fetchSession = async () => {
       try {
         setIsLoadingSession(true);
-        const response = await fetch(`/api/chat/session?incidentId=${sessionId}`);
+        const response = await fetch(`/api/chat/session?incidentId=${sessionId}`, {
+          credentials: 'include'
+        });
 
         if (!response.ok) {
           throw new Error('Failed to load session');
@@ -135,6 +137,7 @@ export default function TroubleshootingSessionPage() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
@@ -224,6 +227,7 @@ export default function TroubleshootingSessionPage() {
       const response = await fetch('/api/reports/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ incidentId: sessionId }),
       });
 
