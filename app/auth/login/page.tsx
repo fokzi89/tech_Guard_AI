@@ -36,8 +36,21 @@ function LoginForm() {
             const result = await authService.signIn(formData.email, formData.password)
 
             if (result.success) {
-                // Redirect to dashboard
-                router.push('/dashboard')
+                // Get user info to redirect to role-specific dashboard
+                const currentUser = await authService.getCurrentUser()
+
+                if (currentUser) {
+                    // Redirect based on role
+                    if (currentUser.profile.role === 'super_admin') {
+                        router.push('/dashboard')
+                    } else if (currentUser.profile.role === 'org_admin') {
+                        router.push('/dashboard/organization')
+                    } else {
+                        router.push('/dashboard/technician')
+                    }
+                } else {
+                    router.push('/dashboard')
+                }
             } else {
                 setError(result.error || 'Login failed')
             }

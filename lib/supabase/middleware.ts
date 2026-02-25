@@ -62,8 +62,8 @@ export async function updateSession(request: NextRequest) {
     // issues with users being randomly logged out.
 
     // Skip auth check for public routes to improve performance
-    // For API routes, let each endpoint handle its own authentication
-    if (!isPublicRoute && !isApiRoute) {
+    // Enable for API routes to ensure session is refreshed
+    if (!isPublicRoute) {
         let user = null
         try {
             const {
@@ -76,7 +76,11 @@ export async function updateSession(request: NextRequest) {
         }
 
         if (!user) {
-            // no user, potentially respond by redirecting the user to the login page
+            // API routes return 401 JSON
+            if (isApiRoute) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            }
+            // Pages redirect to login
             const url = request.nextUrl.clone()
             url.pathname = '/auth/login'
             return NextResponse.redirect(url)

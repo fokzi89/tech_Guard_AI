@@ -43,6 +43,7 @@ export const curatorSchema = z.object({
  */
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
+import { createOpenRouterClient, getOpenRouterModel, shouldUseOpenRouter } from '@/lib/ai/openrouter-config';
 
 export async function curatorAgent(input: CuratorInput): Promise<CuratorOutput> {
     const { conversationHistory, machineModel, externalTicketId } = input;
@@ -72,8 +73,22 @@ Conversation Log:
     `;
 
     try {
+        // Determine which model to use
+        const useOpenRouter = shouldUseOpenRouter();
+        let model;
+
+        if (useOpenRouter) {
+            const openrouter = createOpenRouterClient();
+            const modelName = getOpenRouterModel('structured');
+            model = openrouter(modelName);
+            console.log(`[Curator] Using OpenRouter model: ${modelName}`);
+        } else {
+            model = google('gemini-1.5-pro-latest');
+            console.log('[Curator] Using Google Gemini model');
+        }
+
         const result = await generateObject({
-            model: google('gemini-1.5-pro-latest'),
+            model,
             schema: curatorSchema,
             system: systemPrompt,
             messages: conversationHistory,

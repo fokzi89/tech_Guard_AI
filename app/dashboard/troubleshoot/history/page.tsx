@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, MessageSquare, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
+import { NavigationButton } from '@/app/components/ui/navigation-button';
 import { cn } from '@/lib/utils';
 
 interface TroubleshootingSession {
   id: string;
   machine_model: string;
   external_ticket_id?: string;
-  description?: string;
-  status: 'in_progress' | 'resolved' | 'escalated';
+  status: 'open' | 'resolved' | 'abandoned';
   created_at: string;
   updated_at: string;
   message_count?: number;
@@ -104,9 +104,9 @@ export default function TroubleshootingHistoryPage() {
             <p className="text-muted-foreground mb-6">
               You haven't started any troubleshooting sessions.
             </p>
-            <Button onClick={() => router.push('/dashboard/troubleshoot/new')}>
+            <NavigationButton href="/dashboard/troubleshoot/new">
               Start New Session
-            </Button>
+            </NavigationButton>
           </div>
         ) : (
           <div className="grid gap-4 max-w-4xl mx-auto">
@@ -131,9 +131,9 @@ interface SessionCardProps {
 
 function SessionCard({ session, onClick }: SessionCardProps) {
   const statusConfig = {
-    in_progress: {
+    open: {
       icon: Clock,
-      label: 'In Progress',
+      label: 'Open',
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-500/10',
       borderColor: 'border-blue-500/20',
@@ -145,9 +145,9 @@ function SessionCard({ session, onClick }: SessionCardProps) {
       bgColor: 'bg-green-500/10',
       borderColor: 'border-green-500/20',
     },
-    escalated: {
+    abandoned: {
       icon: XCircle,
-      label: 'Escalated',
+      label: 'Abandoned',
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-500/10',
       borderColor: 'border-orange-500/20',
@@ -165,9 +165,9 @@ function SessionCard({ session, onClick }: SessionCardProps) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <h3 className="text-lg font-semibold mb-1">{session.machine_model}</h3>
-          {session.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {session.description}
+          {session.external_ticket_id && (
+            <p className="text-sm text-muted-foreground font-mono">
+              Ticket: {session.external_ticket_id}
             </p>
           )}
         </div>

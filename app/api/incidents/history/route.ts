@@ -47,11 +47,9 @@ export async function GET(request: NextRequest) {
         id,
         machine_model,
         external_ticket_id,
-        description,
         status,
         created_at,
-        updated_at,
-        conversation_messages (count)
+        updated_at
       `
       )
       .order('created_at', { ascending: false })
@@ -60,7 +58,7 @@ export async function GET(request: NextRequest) {
     if (incidentsError) {
       console.error('[Incidents History] Error fetching incidents:', incidentsError);
       return NextResponse.json(
-        { error: 'Failed to fetch sessions' },
+        { error: `Failed to fetch sessions: ${incidentsError.message}` },
         { status: 500 }
       );
     }
@@ -70,11 +68,10 @@ export async function GET(request: NextRequest) {
       id: incident.id,
       machine_model: incident.machine_model,
       external_ticket_id: incident.external_ticket_id,
-      description: incident.description,
       status: incident.status,
       created_at: incident.created_at,
       updated_at: incident.updated_at,
-      message_count: incident.conversation_messages?.[0]?.count || 0,
+      message_count: 0, // conversation_messages count temporarily disabled
     }));
 
     return NextResponse.json({

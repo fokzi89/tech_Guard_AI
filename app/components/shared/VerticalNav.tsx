@@ -36,7 +36,19 @@ const navItems: NavItem[] = [
     label: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
-    roles: ['super_admin', 'org_admin', 'technician']
+    roles: ['super_admin']
+  },
+  {
+    label: 'Dashboard',
+    href: '/dashboard/organization',
+    icon: LayoutDashboard,
+    roles: ['org_admin']
+  },
+  {
+    label: 'Dashboard',
+    href: '/dashboard/technician',
+    icon: LayoutDashboard,
+    roles: ['technician']
   },
   {
     label: 'Organizations',
@@ -51,15 +63,15 @@ const navItems: NavItem[] = [
     roles: ['super_admin']
   },
   {
-    label: 'Organization',
-    href: '/dashboard/organization',
-    icon: Building2,
-    roles: ['org_admin']
-  },
-  {
     label: 'Members',
     href: '/dashboard/organization/members',
     icon: Users,
+    roles: ['org_admin']
+  },
+  {
+    label: 'Manuals',
+    href: '/dashboard/organization/manuals',
+    icon: FileText,
     roles: ['org_admin']
   },
   {
@@ -69,14 +81,26 @@ const navItems: NavItem[] = [
     roles: ['org_admin']
   },
   {
-    label: 'Troubleshoot',
-    href: '/dashboard/troubleshoot/history',
+    label: 'New Session',
+    href: '/dashboard/troubleshoot/new',
     icon: MessageSquare,
     roles: ['technician']
   },
   {
+    label: 'History',
+    href: '/dashboard/troubleshoot/history',
+    icon: Shield,
+    roles: ['technician']
+  },
+  {
     label: 'Reports',
-    href: '/dashboard/reports',
+    href: '/dashboard/technician/reports',
+    icon: FileText,
+    roles: ['technician']
+  },
+  {
+    label: 'Manuals',
+    href: '/dashboard/technician/manuals',
     icon: FileText,
     roles: ['technician']
   }
@@ -89,7 +113,8 @@ export function VerticalNav({ userRole, userName, orgName, onSignOut }: Vertical
   const filteredNavItems = navItems.filter(item => item.roles.includes(userRole))
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
+    // For main dashboard routes, match exactly
+    if (href === '/dashboard' || href === '/dashboard/organization' || href === '/dashboard/technician') {
       return pathname === href
     }
     return pathname.startsWith(href)

@@ -90,8 +90,14 @@ export default function InviteAcceptPage() {
         return
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Redirect to role-specific dashboard
+      if (inviteToken?.role === 'super_admin') {
+        router.push('/dashboard')
+      } else if (inviteToken?.role === 'org_admin') {
+        router.push('/dashboard/organization')
+      } else {
+        router.push('/dashboard/technician')
+      }
     } catch (err) {
       console.error('Error accepting invite:', err)
       setError('Failed to accept invite. Please try again.')
